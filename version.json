@@ -1,8 +1,9 @@
 {
-  "latest": "0.6.4",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.6.4/PD-Auto-Footage-v0.6.4-protected.zip",
-  "changelog": "✨ อัปเดต v0.6.4 — 📦 เพิ่มแนวโฆษณาใหม่ \"โกดังเห็นแค่มือ\" (POV มือหยิบสินค้าในโกดัง สไตล์ขายส่ง) · 🤖 ติ๊กให้ AI คิดชื่อตะกร้าใหม่จากชื่อสินค้าได้ (ในตั้งค่าโพส) · 🎯 สินค้าตรงรูปที่แนบมากขึ้น (AI เลิกมโนหน้าตาสินค้าเอง) · 🎵 แก้บั๊กบางคลิปไม่มีเพลง · 🎬 ม่านตอนโพสเปลี่ยนเป็นแบรนด์ PD Auto Footage",
+  "latest": "0.6.5",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.6.5/PD-Auto-Footage-v0.6.5-protected.zip",
+  "changelog": "⚡ อัปเดต v0.6.5 (เร็วขึ้น เฟลน้อยลง) — 🎯 แก้อาการ \"Audio generation failed\" ที่ทำให้ฉากมีสินค้าเฟลซ้ำๆ (ปรับ prompt วิดีโอให้ Veo สร้างเสียงบรรยากาศได้ปกติ ไม่ตีว่าเฟล) → ได้คลิปไวขึ้นมาก · ⚡ retry ฉลาดขึ้น: เฟลทั่วไป (audio/timeout) รีทายไวใน 3-20 วิ (เดิมรอ 30-180 วิ) ส่วน 403 ยังรอนานเหมือนเดิม (กันโดนบล็อค)",
   "versions": [
+    { "version": "0.6.5", "note": "🎯 แก้ Audio generation failed (ตัด NO-speech + ใส่ ambient sound ใน video prompt → Veo ไม่เฟล audio gen) + ⚡ short-retry เฟลทั่วไปรีทายไว 3-20 วิ (403 ยังรอยาว)" },
     { "version": "0.6.4", "note": "📦 แนวใหม่ \"โกดังเห็นแค่มือ\" (ภาพ+วิดีโอ ถือโชว์ไม่แกะ สินค้าคงเดิม) + 🤖 AI คิดชื่อตะกร้า + 🎯 สินค้าตรงรูป ref + 🎵 แก้เพลงหายบางคลิป + 🎬 แบรนด์ม่าน TikTok" },
     { "version": "0.6.3", "note": "🎬 ตรวจคลิปเสร็จแม่นแบบ Auto Mode (หา <video> ตรงๆ ไม่พึ่งคลาส Flow ที่เปลี่ยน) + 🔁 smart retry ใช้รูปเดิม + 🛡️ grace 403 ฉาก 1 + 🎓 ปุ่มคลิปสอน + 🔴 จุดแดงแจ้งอัปเดตบนเฟือง" },
     { "version": "0.6.2", "note": "🚀 Merge Mode: เพิ่มเช็คคลิปเสร็จผ่าน API (ภายหลังถอดออกใน 0.6.3 เพราะเสี่ยง 403)" },
