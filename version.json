@@ -1,8 +1,9 @@
 {
-  "latest": "0.7.3",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.3/PD-Auto-Footage-v0.7.3-protected.zip",
-  "changelog": "✨ v0.7.3 — ✍️ กราฟิกลายมือในวิดีโอ ไม่เขียนตัวหนังสือเองแล้ว (เหลือแค่ลูกศร/วงกลม/อีโมจิ/ไฮไลต์เคลื่อนไหว) — แก้ปัญหาไทยมั่ว · ข้อความไทยชัดจากรูปอยู่แล้ว",
+  "latest": "0.7.4",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.4/PD-Auto-Footage-v0.7.4-protected.zip",
+  "changelog": "🔧 v0.7.4 — แก้ Gemini HTTP 404 สำหรับคนใช้คีย์ Gemini ใหม่ (Google ปิด gemini-2.5-flash สำหรับคีย์ใหม่) → เปลี่ยนไปใช้ gemini-flash-latest + โมเดลสำรองอัตโนมัติเมื่อเจอ 404/429/503 · คีย์ pdvip_ ไม่กระทบ",
   "versions": [
+    { "version": "0.7.4", "note": "🔧 แก้ Gemini 404 คีย์ใหม่ — fallback gemini-flash-latest (+โมเดลสำรอง 404/429/503) · pdvip_ ไม่กระทบ" },
     { "version": "0.7.3", "note": "✍️ กราฟิกลายมือในวิดีโอไม่เขียนตัวหนังสือ (กันไทยมั่ว) เหลือลูกศร/วงกลม/อีโมจิ" },
     { "version": "0.7.2", "note": "⏱️ คลิปยาวขึ้น (ฉากขั้นต่ำ 5 วิ + บทยาวขึ้น) + Omni 10 วิเต็ม · 🔇 อุดไฟล์ดิบไม่มีเสียงหลุด" },
     { "version": "0.7.1", "note": "🤖 โมเดล Omni Flash (8/10 วิ) · ✍️ กราฟิกลายมือ Handwritten Overlay (ต่อท้ายพรอมต์วิดีโอ · ติ๊กเปิด)" },
