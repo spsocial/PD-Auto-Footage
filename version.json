@@ -1,8 +1,12 @@
 {
-  "latest": "0.7.5",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.5/PD-Auto-Footage-v0.7.5-protected.zip",
-  "changelog": "🧯 v0.7.5 — แก้เคส \"สินค้าเฟล: Expected , or ] ... JSON\" ตอน AI คิดบท: ระบบซ่อม/กู้บทอัตโนมัติ 3 ชั้น (เติม comma ที่หาย · กู้รายฉากที่สมบูรณ์จากคำตอบที่โดนตัด) + ขอบทใหม่อีกรอบก่อนยอมข้ามสินค้า — งานเดินต่อไม่สะดุด",
+  "latest": "0.7.6",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.6/PD-Auto-Footage-v0.7.6-protected.zip",
+  "changelog": "🔴 แก้บั๊กใหญ่ เจนวิดีโอไม่ได้ (Flow API 400)! Google เปลี่ยนชื่อโมเดลวิดีโอฟรี → บอทส่งคีย์เก่า = เจนวิดีโอเฟลทุกครั้ง (เจนภาพได้ แต่คลิปไม่ออก) · แก้เป็นคีย์ใหม่แล้ว ฟรี 0 เครดิตเหมือนเดิม ใช้ได้ทั้งฉากเดียว+ต่อฉาก",
   "versions": [
+    {
+      "version": "0.7.6",
+      "note": "🔴 แก้เจนวิดีโอไม่ได้ (Flow API 400) — Google เปลี่ยนชื่อโมเดลวิดีโอฟรี บอทส่งคีย์เก่า · แก้เป็นคีย์ใหม่ ฟรี 0 เครดิต ทั้งฉากเดียว+ต่อฉาก"
+    },
     {
       "version": "0.7.5",
       "note": "🧯 ซ่อม/กู้ JSON บทจาก AI อัตโนมัติ (comma หาย/โดนตัด) + retry — แก้เคสสินค้าเฟล Expected , or ]"
