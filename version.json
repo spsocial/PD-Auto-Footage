@@ -1,8 +1,12 @@
 {
-  "latest": "0.7.6",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.6/PD-Auto-Footage-v0.7.6-protected.zip",
-  "changelog": "🔴 แก้บั๊กใหญ่ เจนวิดีโอไม่ได้ (Flow API 400)! Google เปลี่ยนชื่อโมเดลวิดีโอฟรี → บอทส่งคีย์เก่า = เจนวิดีโอเฟลทุกครั้ง (เจนภาพได้ แต่คลิปไม่ออก) · แก้เป็นคีย์ใหม่แล้ว ฟรี 0 เครดิตเหมือนเดิม ใช้ได้ทั้งฉากเดียว+ต่อฉาก",
+  "latest": "0.7.7",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.7/PD-Auto-Footage-v0.7.7-protected.zip",
+  "changelog": "🔑 รองรับคีย์ระบบใหม่: คีย์ PD Footage ซื้อแยก (PDFT-...) และคีย์เหมา PD App (PDALL-...) ล็อกอินได้แล้ว — คีย์ VIP เดิมใช้ได้เหมือนเดิมทุกอย่าง",
   "versions": [
+    {
+      "version": "0.7.7",
+      "note": "🔑 รองรับคีย์ใหม่ PDFT- (Footage ซื้อแยก) + PDALL- (เหมา PD App) — คีย์ VIP เดิมใช้ได้เหมือนเดิม"
+    },
     {
       "version": "0.7.6",
       "note": "🔴 แก้เจนวิดีโอไม่ได้ (Flow API 400) — Google เปลี่ยนชื่อโมเดลวิดีโอฟรี บอทส่งคีย์เก่า · แก้เป็นคีย์ใหม่ ฟรี 0 เครดิต ทั้งฉากเดียว+ต่อฉาก"
