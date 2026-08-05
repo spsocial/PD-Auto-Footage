@@ -1,8 +1,12 @@
 {
-  "latest": "0.7.7",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.7/PD-Auto-Footage-v0.7.7-protected.zip",
-  "changelog": "🔑 รองรับคีย์ระบบใหม่: คีย์ PD Footage ซื้อแยก (PDFT-...) และคีย์เหมา PD App (PDALL-...) ล็อกอินได้แล้ว — คีย์ VIP เดิมใช้ได้เหมือนเดิมทุกอย่าง",
+  "latest": "0.7.8",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.8/PD-Auto-Footage-v0.7.8-protected.zip",
+  "changelog": "🎨 โลโก้ใหม่ — เปลี่ยนโลโก้ในบอทและไอคอน extension ให้ตรงกับ PD App (ไม่กระทบการทำงานอื่น)",
   "versions": [
+    {
+      "version": "0.7.8",
+      "note": "🎨 โลโก้ใหม่ทั้งบอทและไอคอน extension"
+    },
     {
       "version": "0.7.7",
       "note": "🔑 รองรับคีย์ใหม่ PDFT- (Footage ซื้อแยก) + PDALL- (เหมา PD App) — คีย์ VIP เดิมใช้ได้เหมือนเดิม"
