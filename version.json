@@ -1,8 +1,12 @@
 {
-  "latest": "0.7.8",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.8/PD-Auto-Footage-v0.7.8-protected.zip",
-  "changelog": "🎨 โลโก้ใหม่ — เปลี่ยนโลโก้ในบอทและไอคอน extension ให้ตรงกับ PD App (ไม่กระทบการทำงานอื่น)",
+  "latest": "0.7.9",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.9/PD-Auto-Footage-v0.7.9-protected.zip",
+  "changelog": "🎬 แก้เจนวิดีโอเฟล Flow API 400 — Google เข้มลิมิตความยาวพรอมต์ใหม่ ระบบ ✂️ ตัดพรอมต์อัตโนมัติแล้วลองใหม่เอง (สินค้าเด็ก/บทยาว อาการได้บ้างไม่ได้บ้าง)",
   "versions": [
+    {
+      "version": "0.7.9",
+      "note": "🎬 แก้เจนวิดีโอเฟล Flow API 400 (Google เข้มลิมิตพรอมต์) — ✂️ ตัดพรอมต์อัตโนมัติ 2 ระดับ + ปรับ payload ตรงเว็บล่าสุด"
+    },
     {
       "version": "0.7.8",
       "note": "🎨 โลโก้ใหม่ทั้งบอทและไอคอน extension"
