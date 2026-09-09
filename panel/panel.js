@@ -583,12 +583,18 @@
     let tab = (await chrome.tabs.query({ url: 'https://flow.google.com/*' }))[0]
            || (await chrome.tabs.query({ url: 'https://labs.google/fx/tools/flow*' }))[0]
            || (await chrome.tabs.query({ url: 'https://labs.google/*' }))[0];
+    log(tab ? ('🔍 เจอแท็บ Flow ที่เปิดอยู่แล้ว: ' + String(tab.url || '').slice(0, 60))
+                : '🔍 ยังไม่มีแท็บ Flow — กำลังเปิดให้...');
 
     if (!tab) {
-      log('🆕 เปิดหน้า Flow (labs.google) ให้อัตโนมัติ...');
-      tab = await chrome.tabs.create({ url: 'https://labs.google/fx/tools/flow', active: false });
+      /* 🖥️ owner 2026-09-09: "กดรันแล้วมันไม่ไปหน้า Flow เอง"
+         — เดิมเปิดแท็บแบบซ่อนหลัง (active:false) ผู้ใช้เลยนึกว่าบอทไม่ทำงาน
+         → เปิดให้เห็นไปเลย + บอกใน log ว่าเปิดอะไร */
+      log('🆕 เปิดแท็บ Flow ให้อัตโนมัติ (Google อาจพาไป flow.google.com เอง)...');
+      tab = await chrome.tabs.create({ url: 'https://labs.google/fx/tools/flow', active: true });
       await waitTabComplete(tab.id, 30000);
       await sleep(4000);
+      try { const t2 = await chrome.tabs.get(tab.id); log('   → หน้าที่เปิด: ' + String(t2.url || '').slice(0, 60)); } catch (_) {}
     } else if (!(await pingFlow(tab.id, 1))) {
       // มีแท็บแต่ script ไม่ตอบ → reload เพื่อให้ flow-hook โหลดพร้อมหน้า + จับ auth ใหม่
       log('🔄 รีเฟรชหน้า Flow เพื่อเชื่อมต่อ (จับสิทธิ์ใหม่)...');
@@ -608,6 +614,29 @@
       }
     }
     log('  ✓ เชื่อมต่อ Flow แล้ว');
+
+    /* 🌐 Flow แอปใหม่ (flow.google.com): ทุกคำสั่งต้องทำจาก "หน้าโปรเจ็ค" เท่านั้น
+       (owner 2026-09-09: ค้างอยู่หน้าแรก → อัปรูป ref ไม่สำเร็จ แล้วเจนภาพไม่ตรงสินค้า)
+       → สร้างโปรเจ็คก่อน แล้วพาแท็บเข้าหน้าโปรเจ็ค ค่อยเริ่มงาน */
+    try {
+      const tNow = await chrome.tabs.get(tab.id);
+      const urlNow = String((tNow && tNow.url) || '');
+      if (/^https:\/\/flow\.google\.com\//.test(urlNow) && !/\/project\//.test(urlNow)) {
+        log('  🆕 Flow แอปใหม่ — สร้างโปรเจ็คใหม่ก่อนเริ่มงาน...');
+        const np = await chrome.tabs.sendMessage(tab.id, { action: 'miniFlowNewProject' }).catch((e) => ({ success: false, error: e.message }));
+        if (np && np.success && np.projectId) {
+          req.projectId = np.projectId;
+          req.sessionId = np.sessionId || '';
+          await chrome.tabs.update(tab.id, { url: 'https://flow.google.com/project/' + np.projectId });
+          await waitTabComplete(tab.id, 30000);
+          await sleep(4000);
+          if (!(await pingFlow(tab.id, 8))) throw new Error('เข้าหน้าโปรเจ็คแล้วแต่เชื่อมต่อไม่ได้');
+          log('  ✓ เข้าหน้าโปรเจ็คแล้ว: ' + String(np.projectId).slice(0, 14) + '...');
+        } else {
+          log('  ⚠️ สร้างโปรเจ็คไม่สำเร็จ: ' + ((np && np.error) || 'ไม่ทราบสาเหตุ') + ' — จะลองทำต่อจากหน้านี้', 'warning');
+        }
+      }
+    } catch (npErr) { log('  ⚠️ เตรียมหน้าโปรเจ็ค: ' + npErr.message, 'warning'); }
 
     const resp = await chrome.tabs.sendMessage(tab.id, { action: 'miniFlowGenerate', req })
       .catch((e) => ({ success: false, error: e.message }));
@@ -630,8 +659,9 @@
     let tab = (await chrome.tabs.query({ url: 'https://flow.google.com/*' }))[0]
            || (await chrome.tabs.query({ url: 'https://labs.google/fx/tools/flow*' }))[0]
            || (await chrome.tabs.query({ url: 'https://labs.google/*' }))[0];
+    log(tab ? ('🔍 เจอแท็บ Flow: ' + String(tab.url || '').slice(0, 60)) : '🔍 ยังไม่มีแท็บ Flow — กำลังเปิดให้...');
     if (!tab) {
-      log('🆕 เปิดหน้า Flow (labs.google) ให้อัตโนมัติ...');
+      log('🆕 เปิดแท็บ Flow ให้อัตโนมัติ...');
       tab = await chrome.tabs.create({ url: 'https://labs.google/fx/tools/flow', active: true });
       await waitTabComplete(tab.id, 30000);
       await sleep(4000);
@@ -1077,7 +1107,14 @@
       state.character.enabled = charToggle.checked;
       $('charOptions').style.display = charToggle.checked ? 'block' : 'none';
       updateSummary();
+      scheduleAutosave();   // 💾 จำค่าทันที (เดิมพึ่งตัว delegate click อย่างเดียว)
     });
+    /* 💾 owner 2026-09-09: "บางค่ามันยังไม่จำ เวลาปิดเปิด extension ใหม่"
+       เพศ/รายละเอียดตัวละครเก็บใน state.character แต่ไม่มีใครอัปเดต state ตอนผู้ใช้แก้
+       → ตอนเซฟเลยได้ค่าเก่า กลับมาเปิดใหม่ก็เหมือนเดิม */
+    const charGenderEl = $('charGender'), charDescEl = $('charDesc');
+    if (charGenderEl) charGenderEl.addEventListener('change', () => { state.character.gender = charGenderEl.value; scheduleAutosave(); });
+    if (charDescEl) charDescEl.addEventListener('input', () => { state.character.desc = charDescEl.value; scheduleAutosave(); });
     const charUpload = $('charUpload'), charInput = $('charFileInput');
     if (charUpload && charInput) {
       charUpload.addEventListener('click', () => charInput.click());

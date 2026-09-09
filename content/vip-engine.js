@@ -50,6 +50,111 @@ if (window._flowVeoAutoLoaded) {
 // v3.5: รับ Final video จาก flow-hook.js (MAIN world) ผ่าน CustomEvent
 // flow-hook.js รันที่ document_start ใน MAIN world แยกไฟล์
 // เก็บ base64 ไว้ใน window scope (ไม่ใช้ storage เพราะเกิน 10MB limit)
+/* 🌐 Flow แอปใหม่ (flow.google.com) — DOM/ปุ่มคนละชุดกับแอปเก่าโดยสิ้นเชิง
+   selector ของเอนจินนี้ทั้งหมดเขียนไว้สำหรับแอปเก่า (labs.google) → ใช้กับแอปใหม่ไม่ได้เลย
+   จึงมีโมดูล content/flow-merge-new.js คุยกับหน้าใหม่แทน (ยกมาจาก PD App ที่ใช้งานจริงแล้ว) */
+function pdIsNewFlow() {
+  try { return location.hostname === 'flow.google.com' && !/^\/fx(\/|$)/.test(location.pathname); } catch (_) { return false; }
+}
+function pdFlowHome() { return pdIsNewFlow() ? 'https://flow.google.com/' : 'https://labs.google/fx/tools/flow'; }
+//   ชื่อโมเดลใน UI → ชื่อที่ Flow รู้จัก (ตารางเดียวกับ PD App)
+const PD_IMG_MODEL_NEW = { nano_banana_2: 'NARWHAL', nano_banana_pro: 'GEM_PIX_2', imagen_4: 'IMAGEN_4' };
+const PD_VID_KEY_NEW = {
+  veo_lite_lower: 'veo_lite_lower', veo_lite: 'veo_lite', veo_fast: 'veo_fast',
+  omni_flash_4s: 'omni_flash_4s', omni_flash_6s: 'omni_flash_6s', omni_flash: 'omni_flash', omni_flash_10s: 'omni_flash_10s',
+};
+function pdVideoUiKey(d) {
+  let k = (d && d.videoModel) || 'veo_lite_lower';
+  if (k === 'omni_flash') {
+    const sec = parseInt((d && d.omniSeconds) || 8, 10);
+    k = sec === 10 ? 'omni_flash_10s' : sec === 6 ? 'omni_flash_6s' : sec === 4 ? 'omni_flash_4s' : 'omni_flash';
+  }
+  return PD_VID_KEY_NEW[k] || 'veo_lite_lower';
+}
+function pdMergeNewB64ToBlob(du) {
+  const s2 = String(du || '');
+  const i = s2.indexOf(',');
+  const head = i >= 0 ? s2.slice(0, i) : '';
+  const b64 = i >= 0 ? s2.slice(i + 1) : s2;
+  const mime = (head.match(/data:([^;]+)/) || [])[1] || 'image/png';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let k = 0; k < bin.length; k++) arr[k] = bin.charCodeAt(k);
+  return new Blob([arr], { type: mime });
+}
+/* 🛡️ Merge (คลิกจริง) บนแอปใหม่ — ลำดับเหมือนของเดิมทุกขั้น
+   ตั้งค่า → แนบรูป ref → เจนภาพ → Animate → โหลดคลิปจากการ์ด (flow-hook ดักไฟล์เหมือนเดิม) */
+async function runMergeGenerateSceneNewApp(data) {
+  const M = window.__pdMergeNew;
+  if (!M) return { success: false, error: 'โมดูล Merge ของแอปใหม่ยังไม่โหลด — กด Reload extension แล้วรีหน้า Flow' };
+  const d = data || {};
+  const sceneIndex = d.sceneIndex || 1, sceneCount = d.sceneCount || 1;
+  const aspect = (d.aspect === '16:9' || d.aspect === 'landscape') ? '16:9' : '9:16';
+  const imageModel = PD_IMG_MODEL_NEW[d.imageModel] ? d.imageModel : 'nano_banana_pro';
+  const videoModel = pdVideoUiKey(d);
+  const videoPrompt = d.videoPrompt || d.speechText || 'Cinematic subtle camera movement, natural motion, no text overlay';
+  const sleepN = (ms) => new Promise((r) => setTimeout(r, ms));
+  window.__pdMergeReport = (msg) => { try { console.log('[Merge new-app] ' + msg); showBotOverlay('Merge ฉาก ' + sceneIndex + '/' + sceneCount, String(msg).slice(0, 80)); } catch (_) {} };
+  try {
+    await M.waitReady(60000);
+    try { await M.ensureAgentOff(); } catch (_) {}
+    if (M.inScene && M.inScene()) { await M.leaveScene(); }
+
+    // ① ตั้งค่าตามที่ผู้ใช้เลือก (สัดส่วน/โมเดลภาพ/x1) — แอปใหม่ตั้งผ่านเมนูตั้งค่า ไม่ใช่ปุ่มเก่า
+    await M.configure({ mode: 'Image', aspect, imageModel, count: 1 });
+
+    // ② รูป ref — อัปครั้งเดียวต่อโปรเจ็ค แล้วฉากถัดไปหยิบจากคลังมาแนบ
+    const refs = (Array.isArray(d.productImages) ? d.productImages : [])
+      .map((x) => (typeof x === 'string' ? x : (x && x.base64) || ''))
+      .filter(Boolean)
+      .map((b) => (/^data:/i.test(b) ? b : 'data:image/png;base64,' + b));
+    if (refs.length) {
+      const sig = refs.map((r) => r.length).join('|') + '@' + location.pathname;
+      if (window.__pdMergeRefsUpSig !== sig) {
+        const up = await M.uploadViaMenu(refs, pdMergeNewB64ToBlob);
+        if (up) window.__pdMergeRefsUpSig = sig;
+      }
+      await M.attachIngredients(refs.length);
+    }
+
+    // ③ เจนภาพฉากนี้
+    const imgBefore = M.tileKeys('image');
+    await M.typePrompt(String(d.imagePrompt || ''));
+    await M.generate();
+    const imgTile = await M.waitNewTileSmart('image', imgBefore, 6 * 60 * 1000, /pd-(product|character)/i, 'ภาพ');
+    const imageUrl = M.tileImageSrc(imgTile) || '';
+
+    // ④ Animate → วิดีโอ (โมเดล + ความยาวตามที่เลือก)
+    const vidBefore = M.tileKeys('video');
+    await M.tileMenu(imgTile, 'motion_blur', 'Animate');
+    await sleepN(1500);
+    try { await M.configure({ videoModel, duration: M.durOfModel(videoModel), resolution: '720p', count: 1 }); } catch (_) {}
+    await M.typePrompt(videoPrompt);
+    await M.generate();
+    const vidTile = await M.waitNewTileSmart('video', vidBefore, 12 * 60 * 1000, /pd-(product|character)/i, 'วิดีโอ');
+
+    // ⑤ โหลดคลิปจากการ์ด (⋮ → Download) — flow-hook ดักเป็น base64 ให้เหมือนเส้นเดิม
+    window.__flowFinalVideoData__ = null;
+    let got = null;
+    for (let a = 1; a <= 2 && !got; a++) {
+      try {
+        await M.tileMenu(vidTile, 'download', 'Download');
+        await sleepN(1400);
+        const opts = [...document.querySelectorAll('.cdk-overlay-pane button, .cdk-overlay-container button')].filter((b) => !b.disabled);
+        if (opts.length) {
+          const pick = opts.find((b) => /720/.test(b.textContent || '')) || opts[0];
+          await M.humanClick(pick, 'เลือกคุณภาพ/ยืนยันดาวน์โหลด');
+        }
+        got = await M.waitFor(() => (window.__flowFinalVideoData__ && window.__flowFinalVideoData__.base64 ? window.__flowFinalVideoData__ : null), 120000, 2000);
+      } catch (e) { console.log('[Merge new-app] download fail:', e && e.message); }
+    }
+    if (!got) return { success: false, error: 'เจนคลิปเสร็จแล้วแต่ดึงไฟล์จากหน้า Flow ไม่ได้', imageUrl };
+    return { success: true, sceneIndex, videoSize: got.size || 0, imageUrl, imageBase64: null };
+  } catch (err) {
+    return { success: false, error: (err && err.message) || String(err), imageUrl: '' };
+  }
+}
+
 window.__flowFinalVideoData__ = null;
 
 // =====================================================================
@@ -1689,7 +1794,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         chrome.runtime.sendMessage({ action: 'cdpAmbientPause' }); // v4.5.7: หยุด ambient ตอนทำงาน UI (กัน download พัง)
-        const r = await runMergeGenerateScene_v1(message.data);
+        //   🌐 อยู่แอป Flow ใหม่ = เดินเส้นใหม่ (selector คนละชุด) · แอปเก่าเดินเส้นเดิม 100%
+        const r = pdIsNewFlow()
+          ? await runMergeGenerateSceneNewApp(message.data)
+          : await runMergeGenerateScene_v1(message.data);
         sendResponse(r);
       } catch (err) {
         console.error('[Merge v4.5] generateScene error:', err);
@@ -2890,6 +2998,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         console.log('[Flow v17.2] Starting new project...');
+        /* 🌐 แอปใหม่ไม่มีปุ่ม New project แบบเดิม → สร้างผ่าน API แล้วเด้งเข้าโปรเจ็คนั้น */
+        if (pdIsNewFlow()) {
+          const pjNew = await callFlowAPI('createProject');
+          const pidNew = pjNew && (pjNew.projectId || pjNew.id);
+          if (!pidNew) throw new Error('สร้างโปรเจ็คใหม่ (Flow แบบใหม่) ไม่สำเร็จ');
+          sendResponse({ ok: true, success: true, projectId: pidNew, newApp: true });
+          setTimeout(() => { window.location.href = 'https://flow.google.com/project/' + pidNew; }, 400);
+          return;
+        }
         showBotOverlay('กำลังสร้างโปรเจ็คใหม่...', 'หาปุ่ม New project');
 
         // v17.2: หาปุ่ม New project ทันที (popup.js navigate + refresh มาแล้ว)

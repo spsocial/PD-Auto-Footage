@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PD Auto Footage",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "PD Auto Footage — สร้างคลิปโฆษณาแนวฟุตเทจมืออาชีพ + เสียงพากย์ + ซับ + เพลง โพส TikTok ปักตะกร้าอัตโนมัติ",
   "permissions": [
     "activeTab",
@@ -60,6 +60,7 @@
         "https://flow.google.com/*"
       ],
       "js": [
+        "content/flow-merge-new.js",
         "content/vip-engine.js",
         "content/mini-flow.js"
       ],

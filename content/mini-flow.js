@@ -320,7 +320,12 @@
     if (req.mergeMode) { try { await startMergeSession(); } catch (e) {} }
 
     progress('เตรียมโปรเจค Flow...');
-    const proj = await callFlowAPI('createProject');
+    /* 🌐 Flow แอปใหม่: คำสั่งทุกอย่าง (อัปรูป/เจนภาพ) ต้องยิงจาก "หน้าโปรเจ็ค" เท่านั้น
+       (owner 2026-09-09: ค้างอยู่หน้าแรก flow.google.com → อัปรูป ref ไม่สำเร็จทุกครั้ง)
+       → panel จะสร้างโปรเจ็ค + พาแท็บเข้าหน้าโปรเจ็คก่อน แล้วส่ง projectId มาให้ใช้ซ้ำ */
+    const proj = (req && req.projectId)
+      ? { projectId: req.projectId, agentSessionId: req.sessionId || null }
+      : await callFlowAPI('createProject');
     const ctx = {
       projectId: proj.projectId, sessionId: proj.agentSessionId, aspect: req.aspect,
       //   🎨🎬 โมเดลที่ผู้ใช้เลือก — เก็บไว้ใน ctx เพราะตัวเจนรายฉากไม่เห็น req
@@ -346,7 +351,7 @@
           progress('✓ แนบรูปสินค้าแล้ว — ทุกฉากจะใช้สินค้าตัวนี้');
         }
       } catch (e) {
-        progress('⚠️ อัปโหลดรูปสินค้าไม่สำเร็จ — สร้างจากข้อความล้วน (อาจไม่ตรงสินค้า)');
+        progress('⚠️ อัปโหลดรูปสินค้าไม่สำเร็จ: ' + ((e && e.message) || e) + ' — สร้างจากข้อความล้วน (อาจไม่ตรงสินค้า)');
       }
     }
 
@@ -366,7 +371,7 @@
           progress('✓ แนบรูปตัวละครแล้ว — ทุกฉากจะใช้คนเดิม');
         }
       } catch (e) {
-        progress('⚠️ อัปโหลดรูปตัวละครไม่สำเร็จ — ฉากอาจไม่มีตัวละครตามรูป');
+        progress('⚠️ อัปโหลดรูปตัวละครไม่สำเร็จ: ' + ((e && e.message) || e));
       }
     }
 
@@ -407,6 +412,17 @@
   // ── Message handler ──
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'miniFlowPing') { sendResponse({ ok: true }); return true; }
+    /*  🆕 สร้างโปรเจ็คอย่างเดียว — panel เอา id ไปเปิดหน้าโปรเจ็คก่อนเริ่มงาน (จำเป็นสำหรับ Flow แอปใหม่) */
+    if (message.action === 'miniFlowNewProject') {
+      (async () => {
+        try {
+          await waitFlowReady(60000);
+          const pj = await callFlowAPI('createProject');
+          sendResponse({ success: true, projectId: pj && (pj.projectId || pj.id), sessionId: pj && pj.agentSessionId });
+        } catch (e) { sendResponse({ success: false, error: (e && e.message) || String(e) }); }
+      })();
+      return true;
+    }
     if (message.action === 'pdHideCurtain') { // v0.3.1: panel สั่งปิดม่าน (จบงาน/หยุด)
       try { chrome.storage.local.remove('pdFootageRunning'); } catch (e) {}
       try { hideOverlay(); } catch (e) {}

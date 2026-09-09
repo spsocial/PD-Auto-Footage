@@ -31,7 +31,8 @@ const FILES_TO_OBFUSCATE = [
   'panel/picker.js',
   'panel/clipmerge.js',
   'content/flow-api.js',
-  'content/flow-api-new.js',   // Flow app flow.google.com (batchexecute) - MAIN world same as flow-api.js
+  'content/flow-api-new.js',
+  'content/flow-merge-new.js',   // Flow app flow.google.com (batchexecute) - MAIN world same as flow-api.js
   'content/flow-hook.js',
   'content/mini-flow.js',
   'content/mini-tiktok.js',
