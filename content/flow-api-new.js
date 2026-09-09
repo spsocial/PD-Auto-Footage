@@ -135,7 +135,10 @@
       if (m) { try { payloadStr = JSON.parse('"' + m[1] + '"'); } catch (_) {} }
     }
     if (payloadStr == null) {
-      var e = new Error('Flow API (' + wantRpc + ') ไม่คืนผลลัพธ์' + (errRow ? ': ' + JSON.stringify(errRow).slice(0, 300) : ''));
+      /* 🔎 owner 2026-09-08: ลูกค้าแจ้ง "Flow API (eb1hJf) ไม่คืนผลลัพธ์" 4 ราย ติดกัน 2 วัน + โดนหักเครดิตทุกครั้ง
+         ข้อความเดิมไม่บอกอะไรเลยเมื่อไม่มี errRow → แกะไม่ได้ว่า Google ตอบอะไรกลับมา
+         → แนบเศษคำตอบจริงมาด้วย (ตัดสั้น) เพื่อให้รายงานรอบหน้าบอกรูปแบบที่ต้องรองรับ */
+      var e = new Error('Flow API (' + wantRpc + ') ไม่คืนผลลัพธ์' + (errRow ? ': ' + JSON.stringify(errRow).slice(0, 300) : (text ? ' · Google ตอบ: ' + _errHint(text).slice(0, 160) : ' · คำตอบว่างเปล่า')));
       e.body = String(text).slice(0, 1500); throw e;
     }
     try { return JSON.parse(payloadStr); } catch (_) { return payloadStr; }
@@ -388,7 +391,11 @@
     // 🥕 Ingredients / r2v (MZZa6b) — ภาพสำเร็จรูปหลายใบเป็น "ส่วนผสม" → วิดีโอ (จับจาก UI ใหม่ 2026-09-03)
     //   arg: [[[ [null,null,[[["prompt"]]]], [[null,mediaId],...], model, aspect, null, [null,null,null,null,uuid,uuid] ]], ctx, [uuid, 2]]
     //   aspect: 2=9:16 · 3=16:9 (UI ส่ง 1=auto → ได้แนวนอน — เราส่งชัดตามที่บอทเลือก)
-    //   prompt: แอปเก่าฝัง @ref-N เป็น reference part · แอปใหม่แนบ ingredients แยก → ตัด @ref-N ออกจากข้อความ
+    //   prompt: 🔗 2026-09-07 — เลิกตัด @ref-N แล้ว
+    //     กลไกจริงของ @ref-N (สูตร storymix บน gateway) = "ข้อความธรรมดาที่ตรงกับชื่อไฟล์ ref-N.png ที่อัปเข้าโปรเจ็ค"
+    //     ไม่ใช่ API พิเศษของแอปเก่า → แอปใหม่ก็อัปชื่อ ref-N.png เหมือนกัน ส่งไปตรงๆ ได้เลย
+    //     (ตอนพอร์ตแอปใหม่ v1.6.0 ตัดทิ้งเพราะเข้าใจว่าเป็น reference part ของ API — เข้าใจผิด)
+    //     ใช้เฉพาะ Story mix โหมดหนัง (ล็อกหน้าตัวละครหลายคน) · บอทอื่นไม่มี @ref ในพรอมต์อยู่แล้ว
     generateWithIngredients: async function (o) {
       o = o || {};
       var pid = o.projectId || pageProjectId();
@@ -396,9 +403,30 @@
       var ids = (Array.isArray(o.imageMediaIds) ? o.imageMediaIds : [o.imageMediaIds]).filter(Boolean);
       if (!ids.length) throw new Error('generateWithIngredients: imageMediaIds required');
       var model = o.videoModelKey || 'abra_r2v_10s';
-      var prompt = String(o.prompt || '').replace(/@ref-\d+/g, '').replace(/\s{2,}/g, ' ').trim();
+      var prompt = String(o.prompt || '').replace(/\s{2,}/g, ' ').trim();
+      // 🔗 2026-09-07 (แกะ payload จริงจาก network ที่ owner ส่งมา): พรอมต์ของแอปใหม่ = "ลิสต์ชิ้นส่วน" ไม่ใช่ข้อความก้อนเดียว
+      //    ชิ้นข้อความ = ["ข้อความ"] · ชิ้นอ้างรูป (ชิปเทาๆ) = [null,[["<mediaId>","<ชื่อไฟล์>"]]]
+      //    → แปลง @ref-N ในพรอมต์เป็นชิปจริงที่ผูกกับรูปใบนั้น (เท่ากับคนกด @ เลือกไฟล์เอง)
+      //    ไม่มี @ref = ชิ้นข้อความเดียวเหมือนเดิมเป๊ะ
+      var names = Array.isArray(o.refNames) ? o.refNames : [];
+      var nameOf = function (i) { return String(names[i] || ('ref-' + i + '.png')); };
+      var parts = (function () {
+        var out = [], re = /@ref-(\d+)/g, last = 0, m;
+        while ((m = re.exec(prompt))) {
+          var k = +m[1];
+          if (!(k >= 0 && k < ids.length)) continue;       // ไม่มีรูปใบนั้น = ปล่อยเป็นข้อความไป
+          var before = prompt.slice(last, m.index);
+          if (before) out.push([before]);
+          out.push([null, [[ids[k], nameOf(k)]]]);          // ← ชิปอ้างรูป
+          out.push([' ']);
+          last = m.index + m[0].length;
+        }
+        var tail = prompt.slice(last);
+        if (tail) out.push([tail]);
+        return out.length ? out : [[prompt]];
+      })();
       var token = await recaptcha('VIDEO_GENERATION');
-      var arg = [[[[null, null, [[[prompt]]]], ids.map(function (id) { return [null, id]; }), model, vidAspect(o.aspectRatio), null, [null, null, null, null, uuid(), uuid()]]], ctxOf(pid, token), [uuid(), 2]];
+      var arg = [[[[null, null, [parts]], ids.map(function (id) { return [null, id]; }), model, vidAspect(o.aspectRatio), null, [null, null, null, null, uuid(), uuid()]]], ctxOf(pid, token), [uuid(), 2]];
       var p = await callRpc('MZZa6b', arg, { retries: 0 });
       if (Array.isArray(p) && typeof p[1] === 'number') _credits = p[1];
       var recs = videoRecords(p).map(recordToMedia);

@@ -399,8 +399,13 @@
         }
       }
     } finally {
-      // ลบโปรเจคทิ้งเสมอ (สำเร็จหรือเฟล) — ไม่ให้รก
-      try { await callFlowAPI('deleteProject', proj.projectId); } catch (e) {}
+      /* 🗑️ ลบโปรเจ็คเฉพาะเมื่อผู้ใช้เปิดสวิตช์ไว้ (owner 2026-09-09: อยากย้อนดูภาพ/คลิปทีหลัง)
+         เดิมลบทิ้งเสมอ = งานหายหมด ย้อนกลับไปดูไม่ได้เลย */
+      if (req && req.deleteProjectAfter) {
+        try { await callFlowAPI('deleteProject', proj.projectId); progress('🗑️ ลบโปรเจ็ค Flow ทิ้งแล้ว (ตามที่ตั้งค่าไว้)'); } catch (e) {}
+      } else {
+        progress('📁 เก็บโปรเจ็คไว้ใน Flow — ย้อนดูภาพ/คลิปได้');
+      }
       // ปิด humanized session + detach debugger (แถบ yellow bar หาย)
       try { await stopMergeSession(); } catch (e) {}
       hideOverlay();

@@ -297,6 +297,8 @@
     /* ⚠️ Flow ใส่การ์ด "กำลังเจน" ทันทีที่กด → เจอการ์ดใหม่ไม่ได้แปลว่าเสร็จ (owner: "ได้ภาพแล้ว" ขึ้นใน 3 วิ)
        → ต้องรอจนการ์ดมีรูป/คลิปจริง (มี src) ถึงจะถือว่าเสร็จ */
     const ready = (x) => {
+      //   การ์ดที่ยังเจนอยู่จะโชว์ % ความคืบหน้า (เช่น "15%") — ยังไม่นับว่าเสร็จ
+      if (/\d{1,3}\s?%/.test(norm(x))) return false;
       const m = x.querySelector(kind === 'video' ? 'video, img.thumbnail, img' : 'img');
       const src = m && (m.getAttribute('src') || m.currentSrc || '');
       return !!(src && !/^data:image\/gif/.test(src));
@@ -304,7 +306,12 @@
     /* 🚫 กันการ์ด "รูป ref ที่เราเพิ่งอัป" มาปนเป็นภาพที่เจนได้ (owner จับได้: บอทเอาภาพนางแบบไปทำวิดีโอ)
        รูป ref อัปเสร็จช้ากว่าตอนเริ่มเจน → โผล่ทีหลัง = ดูเหมือนการ์ดใหม่เป๊ะ · กันด้วยชื่อไฟล์ของเราเอง */
     const skip = (x) => excludeRe && excludeRe.test(norm(x));
-    const t = await waitFor(() => get().find((x) => !known.has(tileKey(x)) && !skip(x) && ready(x)) || null, timeoutMs || 6 * 60 * 1000, 3000);
+    /* ⚠️ owner 2026-09-09: "ฉาก 2 ยังเจนไม่เสร็จ แต่ไปเซฟคลิปฉาก 1 แล้วบอกว่าเสร็จ"
+       ต้นเหตุ: กุญแจของการ์ด = URL รูป/คลิปข้างใน — การ์ดที่ยังเรนเดอร์ไม่เสร็จตอนเริ่มจับ
+       พอเสร็จทีหลัง URL เพิ่งโผล่ = "กุญแจเปลี่ยน" → นับเป็นการ์ดใหม่ทั้งที่เป็นของฉากก่อน
+       → กันอีกชั้นด้วย "ตัวตนของ element": การ์ดไหนพร้อมอยู่แล้วตั้งแต่ก่อนกดเจน = ของเก่าเสมอ */
+    const oldReady = get().filter((x) => ready(x));
+    const t = await waitFor(() => get().find((x) => !known.has(tileKey(x)) && !skip(x) && ready(x) && oldReady.indexOf(x) < 0) || null, timeoutMs || 6 * 60 * 1000, 3000);
     if (!t) throw new Error('รอ' + (kind === 'video' ? 'คลิป' : 'ภาพ') + 'ไม่ขึ้นภายในเวลา');
     await sleep(2000); // ให้การ์ดวาดปุ่มลอยเสร็จ
     return t;
@@ -757,10 +764,13 @@
     if (!ok) await closeOverlay();
     return !!ok;
   }
+  /*  รับได้ 2 แบบ: จำนวนใบ (0..n-1) หรือ "ลิสต์ลำดับใบที่จะแนบ" เช่น [0,2]
+      (บางฉากอัปรูปเข้าคลังไว้เฉย ๆ แต่ไม่แนบ — เช่นฉากที่ไม่โชว์สินค้า) */
   async function attachIngredients(count) {
-    const want = Math.max(1, count || 1);
+    const idxs = Array.isArray(count) ? count.slice() : Array.from({ length: Math.max(1, count || 1) }, (_, i) => i);
+    const want = idxs.length;
     let n = 0;
-    for (let i = 0; i < want; i++) {
+    for (const i of idxs) {
       let ok = false;
       try { ok = await attachOne(i); } catch (e) { say('   ⚠️ แนบรูปใบ ' + (i + 1) + ' เออเรอร์: ' + ((e && e.message) || e), 'warn'); }
       if (ok) n++;

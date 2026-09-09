@@ -366,6 +366,8 @@
           videoModel: $('videoModelSel') ? $('videoModelSel').value : 'veo_lite_lower',
           omniSeconds: $('omniSecondsSel') ? (parseInt($('omniSecondsSel').value, 10) || 8) : 8, // ⏱️ Omni Flash 8/10s
           maxRetries: $('maxRetries') ? Math.max(1, Math.min(15, parseInt($('maxRetries').value) || 7)) : 7,
+          //   🗑️ owner 2026-09-09: "มันลบโปรเจ็คให้ออโต้ตอนเสร็จ เลยย้อนดูไม่ได้" → เลือกเองได้ (default = เก็บไว้)
+          deleteProjectAfter: $('deleteProjectAfter') ? $('deleteProjectAfter').checked : false,
           scenes: scenes.map((s) => ({ imagePrompt: s.imagePrompt, videoPrompt: s.videoPrompt, showProduct: s.showProduct !== false })),
         };
         // 🛡️ Merge Mode คลิกจริง = ขับเครื่องยนต์ VIP (คลิกปุ่มบนหน้า Flow จริง) · ไม่งั้น API Direct
@@ -578,6 +580,19 @@
     return false;
   }
 
+  /* 🏠 จบงานแล้วพาแท็บ Flow กลับหน้าหลัก (owner 2026-09-09: ไม่อยากค้างอยู่หน้างาน)
+     เลือกปลายทางตามหน้าที่ใช้อยู่ (แอปใหม่/เก่า) */
+  async function goFlowHome(tabId) {
+    try {
+      const t = await chrome.tabs.get(tabId);
+      const url = String((t && t.url) || '');
+      const home = /flow\.google\.com/.test(url) ? 'https://flow.google.com/' : 'https://labs.google/fx/tools/flow';
+      if (url === home) return;
+      await chrome.tabs.update(tabId, { url: home });
+      log('🏠 กลับหน้า Flow หลักแล้ว (จบงาน)');
+    } catch (_) {}
+  }
+
   async function generateFlowClips(req) {
     /* 🌐 Google ทยอยย้าย Flow ไป flow.google.com — ต้องหาแท็บให้เจอทั้ง 2 โดเมน */
     let tab = (await chrome.tabs.query({ url: 'https://flow.google.com/*' }))[0]
@@ -621,7 +636,9 @@
     try {
       const tNow = await chrome.tabs.get(tab.id);
       const urlNow = String((tNow && tNow.url) || '');
-      if (/^https:\/\/flow\.google\.com\//.test(urlNow) && !/\/project\//.test(urlNow)) {
+      /* ⚠️ สร้างโปรเจ็คใหม่ทุกรอบ แม้ตอนนี้จะค้างอยู่ในโปรเจ็คเก่าก็ตาม
+         (ใช้โปรเจ็คเดิมซ้ำ = รูป/คลิปของสินค้าตัวก่อนปน และผู้ใช้ไม่เห็นว่าบอทเปิดหน้า Flow ให้) */
+      if (/^https:\/\/flow\.google\.com\//.test(urlNow)) {
         log('  🆕 Flow แอปใหม่ — สร้างโปรเจ็คใหม่ก่อนเริ่มงาน...');
         const np = await chrome.tabs.sendMessage(tab.id, { action: 'miniFlowNewProject' }).catch((e) => ({ success: false, error: e.message }));
         if (np && np.success && np.projectId) {
@@ -643,6 +660,7 @@
     if (!resp || !resp.success) throw new Error((resp && resp.error) || 'Flow gen ไม่สำเร็จ');
 
     const r = await chrome.storage.local.get(resp.key);
+    try { await goFlowHome(tab.id); } catch (_) {}   // 🏠 จบงานแล้วกลับหน้า Flow หลัก
     const data = r[resp.key];
     chrome.storage.local.remove(resp.key);
     return (data && data.clips) || [];
@@ -753,7 +771,18 @@
         log('  🆕 เปิดโปรเจคใหม่บนหน้า Flow...');
         const np = await sendTab({ action: 'startNewProject' });
         if (np && np.success === false && np.error) log('  ⚠️ New project: ' + np.error, 'error');
-        await sleep(2500);
+        /* 🌐 Flow แอปใหม่: สร้างโปรเจ็คเสร็จแล้ว มันจะ "เด้งเข้าหน้าโปรเจ็ค" — หน้าโหลดใหม่ทั้งหน้า
+           ถ้าสั่งงานต่อเร็วเกินไป คำสั่งจะไปถึงสคริปต์ของหน้าเก่าที่กำลังจะตาย = "หน้า Flow ยังไม่พร้อม" วนเฟลทั้งฉาก
+           (owner 2026-09-09: ฉาก 1 เฟลครบ 7 รอบ แต่ฉาก 2 ขึ้นไปปกติ) → รอจนหน้าใหม่โหลดเสร็จ + สคริปต์ตอบก่อน */
+        try { await waitTabComplete(tabId, 30000); } catch (_) {}
+        let _ready = false;
+        for (let w = 0; w < 20 && !_ready; w++) {
+          await sleep(1500);
+          const pr = await sendTab({ action: 'mergePing' });
+          _ready = !!(pr && pr.success);
+        }
+        log(_ready ? '  ✓ หน้าโปรเจ็คพร้อมแล้ว' : '  ⚠️ หน้าโปรเจ็คยังไม่ตอบ — จะลองทำต่อ', _ready ? 'info' : 'warning');
+        await sleep(1500);
       }
 
       // v0.2 🛡️ retry แบบ PD Auto VIP — 7 ครั้ง สลับ (คู่=กดปุ่ม Retry บน card, คี่=refresh หน้า)
@@ -905,6 +934,7 @@
       await sendTab({ action: 'setSkipDownload', enabled: false });
       await chrome.runtime.sendMessage({ action: 'cdpAmbientStop', tabId }).catch(() => {});
       await sendTab({ action: 'mergeUpdateOverlay', hide: true });
+      await goFlowHome(tabId);   // 🏠 จบงานแล้วไม่ค้างอยู่หน้างาน
     }
     if (clips.length === 0) throw new Error('Merge Mode ไม่ได้คลิปเลย — ลองใหม่ หรือสลับเป็น API Direct');
     return clips;
@@ -989,6 +1019,7 @@
       if (s.postDisclose !== undefined && $('postDisclose')) { $('postDisclose').checked = s.postDisclose; $('postDisclose').dispatchEvent(new Event('change')); }
       if (s.postNoCaption !== undefined && $('postNoCaption')) $('postNoCaption').checked = s.postNoCaption;
       if (s.aiBasketName !== undefined && $('aiBasketName')) $('aiBasketName').checked = s.aiBasketName;
+      if (s.deleteProjectAfter !== undefined && $('deleteProjectAfter')) $('deleteProjectAfter').checked = s.deleteProjectAfter;
       // v0.3.1: คืนเปิด/ปิด SFX + sync การแสดงผลกล่อง option ของเพลง/SFX
       if (s.sfx !== undefined && $('sfxToggle')) {
         $('sfxToggle').checked = s.sfx;
@@ -1049,6 +1080,25 @@
     });
   }
 
+  //   🖼️ ย่อรูป (dataURL → dataURL) — ด้านยาวสุดไม่เกิน max px · ใช้กับรูปที่ต้องเก็บถาวร
+  function pdShrinkImage(dataUrl, max) {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          const sc = Math.min(1, max / Math.max(img.width, img.height));
+          if (sc >= 1 && String(dataUrl).length < 900000) return resolve(dataUrl);   // เล็กอยู่แล้ว
+          const cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          resolve(cv.toDataURL('image/jpeg', 0.88));
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      } catch (e) { reject(e); }
+    });
+  }
+
   function saveSettings() {
     const s = {
       apiKey: $('apiKeyInput').value.trim(),
@@ -1062,6 +1112,7 @@
       scenePool: Array.from(document.querySelectorAll('.scene-pool-cb:checked')).map((c) => parseInt(c.value)), // v0.2
       structurePool: Array.from(document.querySelectorAll('.structure-pool-cb:checked')).map((c) => c.value), // v0.2
       newProjectEachSet: $('newProjectEachSet') ? $('newProjectEachSet').checked : true, // v0.2
+      deleteProjectAfter: $('deleteProjectAfter') ? $('deleteProjectAfter').checked : false,   // 🗑️ ลบโปรเจ็คหลังเจนเสร็จ
       // v0.4: ตั้งค่าการโพส
       postType: (document.querySelector('input[name="postType"]:checked') || {}).value || 'postNow',
       discloseType: (document.querySelector('input[name="discloseType"]:checked') || {}).value || 'your_brand',
@@ -1077,7 +1128,11 @@
      'subFont', 'subAnim', 'subSize', 'subOutline', 'subSplit', 'subPos',
      'bgMusicVolume', 'sfxSound', 'sfxVolume',
      'schedHour', 'schedMinute', 'schedInterval', 'schedRandMin', 'schedRandMax', 'postHashtags', 'omniSecondsSel'].forEach((id) => { if ($(id)) s[id] = $(id).value; }); // v0.3.1/0.4/0.6.7: + โมเดล/รีทาย/ซับใหม่
-    chrome.storage.local.set({ pdMiniSettings: s });
+    chrome.storage.local.set({ pdMiniSettings: s }, () => {
+      //   เซฟไม่ผ่าน = ค่าทั้งชุดหาย (เดิมเงียบๆ ไม่มีใครรู้) → บอกใน log เลย
+      const err = chrome.runtime.lastError;
+      if (err) { try { log('⚠️ จำค่าตั้งค่าไม่สำเร็จ: ' + err.message + ' (รูปอาจใหญ่เกินไป)', 'warning'); } catch (_) {} }
+    });
   }
 
   // ── Events ───────────────────────────────────────────────────────
@@ -1122,8 +1177,11 @@
         const file = e.target.files && e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (ev) => {
-          state.character.image = ev.target.result;
+        reader.onload = async (ev) => {
+          /* 💾 owner 2026-09-09: "รูปตัวละครแนบไว้ เปิดปิดมาหายตลอด"
+             รูปจากมือถือ/กล้องใหญ่มาก (5-10MB) → เก็บลง storage ไม่ผ่าน = ค่าอื่นที่เซฟพร้อมกันหายด้วย
+             → ย่อเหลือด้านยาวสุด 768px JPEG ก่อนเสมอ (เป็นรูป ref คมพอ) */
+          state.character.image = await pdShrinkImage(ev.target.result, 768).catch(() => ev.target.result);
           const pv = $('charPreview'), ph = $('charPlaceholder');
           if (pv) { pv.src = ev.target.result; pv.style.display = 'block'; }
           if (ph) ph.style.display = 'none';

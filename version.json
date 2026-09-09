@@ -1,8 +1,12 @@
 {
-  "latest": "0.8.1",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.1/PD-Auto-Footage-v0.8.1-protected.zip",
-  "changelog": "🎨 เลือกโมเดลได้จริงแล้ว (เดิมล็อก Nano Banana Pro + Veo ฟรีตายตัว ไม่ว่าจะเลือกอะไร) + เพิ่ม Imagen 4 · Omni Flash 4/6 วิ · แก้ชื่อ extension ที่ค้างเป็น v0.7.7",
+  "latest": "0.8.3",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.3/PD-Auto-Footage-v0.8.3-protected.zip",
+  "changelog": "🌐 ใช้ได้กับ Flow แอปใหม่ (flow.google.com) ครบทั้ง Express และ Merge Mode · เลือกโมเดลได้จริง + Imagen 4 / Omni 4-6 วิ · เลือกได้ว่าจะเก็บหรือลบโปรเจ็ค Flow · จบงานกลับหน้าหลักให้เอง",
   "versions": [
+    {
+      "version": "0.8.3",
+      "note": "🌐 ใช้ได้กับ Flow แอปใหม่ (flow.google.com) ครบทั้ง Express และ Merge Mode · เลือกโมเดลได้จริง + Imagen 4 / Omni 4-6 วิ · เลือกได้ว่าจะเก็บหรือลบโปรเจ็ค Flow · จบงานกลับหน้าหลักให้เอง"
+    },
     {
       "version": "0.8.1",
       "note": "🎨 เลือกโมเดลได้จริงแล้ว (เดิมล็อก Nano Banana Pro + Veo ฟรีตายตัว ไม่ว่าจะเลือกอะไร) + เพิ่ม Imagen 4 · Omni Flash 4/6 วิ · แก้ชื่อ extension ที่ค้างเป็น v0.7.7"

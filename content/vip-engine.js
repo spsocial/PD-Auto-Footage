@@ -95,8 +95,10 @@ async function runMergeGenerateSceneNewApp(data) {
   const videoPrompt = d.videoPrompt || d.speechText || 'Cinematic subtle camera movement, natural motion, no text overlay';
   const sleepN = (ms) => new Promise((r) => setTimeout(r, ms));
   window.__pdMergeReport = (msg) => { try { console.log('[Merge new-app] ' + msg); showBotOverlay('Merge ฉาก ' + sceneIndex + '/' + sceneCount, String(msg).slice(0, 80)); } catch (_) {} };
+  const stopped = () => !!window.__pdFootageStopNow__;   // ⏹️ ผู้ใช้กดหยุด = เลิกกลางทางทันที
   try {
     await M.waitReady(60000);
+    if (stopped()) return { success: false, error: 'ผู้ใช้กดหยุด' };
     try { await M.ensureAgentOff(); } catch (_) {}
     if (M.inScene && M.inScene()) { await M.leaveScene(); }
 
@@ -107,9 +109,10 @@ async function runMergeGenerateSceneNewApp(data) {
     try { await M.clearIngredients(); } catch (_) {}
 
     // ② รูป ref — อัปครั้งเดียวต่อโปรเจ็ค แล้วฉากถัดไปหยิบจากคลังมาแนบ
-    const refs = (Array.isArray(d.productImages) ? d.productImages : [])
-      .map((x) => (typeof x === 'string' ? x : (x && x.base64) || ''))
-      .filter(Boolean)
+    /*  รูป ref: อัปเข้าคลัง "ทุกใบ" แต่ **แนบเฉพาะใบที่ฉากนี้ต้องใช้**
+        (ฉากที่ไม่โชว์สินค้าจะส่ง uploadOnly:true มา — อัปไว้ให้ฉากอื่นใช้ แต่ฉากนี้ห้ามแนบ) */
+    const refItems = (Array.isArray(d.productImages) ? d.productImages : []).map((x) => (typeof x === 'string' ? { base64: x } : (x || {})));
+    const refs = refItems.map((x) => String(x.base64 || '')).filter(Boolean)
       .map((b) => (/^data:/i.test(b) ? b : 'data:image/png;base64,' + b));
     if (refs.length) {
       const sig = refs.map((r) => r.length).join('|') + '@' + location.pathname;
@@ -117,7 +120,9 @@ async function runMergeGenerateSceneNewApp(data) {
         const up = await M.uploadViaMenu(refs, pdMergeNewB64ToBlob);
         if (up) window.__pdMergeRefsUpSig = sig;
       }
-      await M.attachIngredients(refs.length);
+      const attachIdx = refItems.map((x, i) => (x && x.uploadOnly ? -1 : i)).filter((i) => i >= 0);
+      if (attachIdx.length) await M.attachIngredients(attachIdx);
+      else console.log('[Merge new-app] ฉากนี้ไม่แนบรูป ref (uploadOnly ทุกใบ)');
     }
 
     // ③ เจนภาพฉากนี้
@@ -125,6 +130,7 @@ async function runMergeGenerateSceneNewApp(data) {
     await M.typePrompt(String(d.imagePrompt || ''));
     await M.generate();
     const imgTile = await M.waitNewTileSmart('image', imgBefore, 6 * 60 * 1000, /pd-(product|character)/i, 'ภาพ');
+    if (stopped()) return { success: false, error: 'ผู้ใช้กดหยุด' };
     const imageUrl = M.tileImageSrc(imgTile) || '';
 
     // ④ Animate → วิดีโอ (โมเดล + ความยาวตามที่เลือก)
@@ -135,6 +141,13 @@ async function runMergeGenerateSceneNewApp(data) {
     await M.typePrompt(videoPrompt);
     await M.generate();
     const vidTile = await M.waitNewTileSmart('video', vidBefore, 12 * 60 * 1000, /pd-(product|character)/i, 'วิดีโอ');
+    /* 🛡️ กันชั้นสุดท้าย: การ์ดคลิปที่ได้ต้อง "ไม่ใช่ไฟล์เดียวกับฉากก่อน"
+       (owner 2026-09-09: ฉาก 2 ยังเจนไม่เสร็จ แต่ไปหยิบคลิปฉาก 1 มาเซฟแล้วบอกว่าจบ) */
+    const _vsrc = (() => { const v = vidTile && (vidTile.querySelector('video') || vidTile.querySelector('img.thumbnail') || vidTile.querySelector('img')); return (v && (v.currentSrc || v.getAttribute('src'))) || ''; })();
+    if (_vsrc && window.__pdLastMergeVidSrc === _vsrc) {
+      return { success: false, error: 'ได้การ์ดคลิปเดิมของฉากก่อน (คลิปฉากนี้ยังไม่เสร็จ) — ลองใหม่', imageUrl };
+    }
+    window.__pdLastMergeVidSrc = _vsrc || window.__pdLastMergeVidSrc;
 
     /* ⑤ โหลดคลิปจากการ์ด (⋮ → Download) — flow-hook ดักเป็น base64 ให้เหมือนเส้นเดิม
        ⚠️ owner 2026-09-09: "เซฟผิดคลิป — คลิปยังไม่ทันเสร็จ มันคิดว่าเสร็จแล้วไปเอาคลิปเดิมที่เซฟไปแล้ว"
@@ -149,7 +162,9 @@ async function runMergeGenerateSceneNewApp(data) {
         await sleepN(1400);
         const opts = [...document.querySelectorAll('.cdk-overlay-pane button, .cdk-overlay-container button')].filter((b) => !b.disabled);
         if (opts.length) {
-          const pick = opts.find((b) => /720/.test(b.textContent || '')) || opts[0];
+          const wantQ = String(d.quality || '720p').replace(/[^0-9]/g, '') || '720';   // คุณภาพตามที่ผู้ใช้เลือก
+          const pick = opts.find((b) => new RegExp(wantQ).test(b.textContent || ''))
+            || opts.find((b) => /720/.test(b.textContent || '')) || opts[0];
           await M.humanClick(pick, 'เลือกคุณภาพ/ยืนยันดาวน์โหลด');
         }
         got = await M.waitFor(() => {
@@ -1751,6 +1766,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const { sceneIndex = 0, quality = '720p' } = message.data || {};
       try {
         chrome.runtime.sendMessage({ action: 'cdpAmbientPause' }); // v4.5.7: หยุด ambient ตอนกดปุ่ม+download
+        /* 🌐 แอปใหม่: การ์ด "ล้มเหลว" หน้าตาคนละแบบ — ใช้ตัวจับของโมดูลใหม่
+           (ไม่งั้น log จะขึ้น 'หาปุ่ม Retry ไม่เจอ' ทุกรอบ — owner เจอจริง 2026-09-09) */
+        if (pdIsNewFlow()) {
+          const M3 = window.__pdMergeNew;
+          const fc = M3 && M3.failedGenCard && M3.failedGenCard();
+          if (!fc) { sendResponse({ success: false, error: 'ไม่พบการ์ดที่ล้มเหลวบนหน้า Flow' }); return; }
+          await M3.humanClick(fc.retry, 'ลองใหม่บนการ์ดที่ล้มเหลว');
+          sendResponse({ success: true, retried: true, newApp: true });
+          return;
+        }
         const btn = findFailedCardRetryButton();
         if (!btn) { sendResponse({ success: false, error: 'หาปุ่ม Retry บนกรอบ fail ไม่เจอ' }); return; }
         const rect = btn.getBoundingClientRect();
@@ -2986,6 +3011,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // === v6.8: ตรวจจับและ cleanup หน้า Scenebuilder ก่อนเริ่มชุดใหม่ ===
   if (message.action === 'checkAndCleanupScenebuilder') {
+    /* 🌐 แอปใหม่: หน้าแก้ซีนคนละแบบ — ค้างอยู่ในหน้านี้ = กล่องพ้อมกลายเป็น "แก้วิดีโอ" → เจนฉากใหม่ไม่ได้ */
+    if (pdIsNewFlow()) {
+      const M2 = window.__pdMergeNew;
+      if (M2 && M2.inScene && M2.inScene()) {
+        M2.leaveScene().then((ok) => sendResponse({ wasInScenebuilder: true, cleanupDone: !!ok }))
+          .catch((e) => sendResponse({ wasInScenebuilder: true, cleanupDone: false, error: e.message }));
+        return true;
+      }
+      sendResponse({ wasInScenebuilder: false });
+      return true;
+    }
     const isInScenebuilder = isInScenebuilderPage();
     console.log(`[Flow] Checking Scenebuilder page: ${isInScenebuilder}`);
 
