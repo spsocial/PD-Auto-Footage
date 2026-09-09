@@ -378,7 +378,10 @@
   /* ⚠️ การ์ด "ล้มเหลว" บนหน้าโปรเจ็ค (ตอนเจนภาพ/วิดีโอไม่ผ่าน — คนละใบกับการ์ดในแผงประวัติของ Scene builder)
      owner 2026-09-09: "กรณีเฟลตอนสร้าง มันยังไม่มีตัวเช็คเพื่อรีทาย" — เดิมบอทไม่รู้ นั่งรอเก้อจนครบ 6 นาที
      หน้าตา: กล่องในกริดสื่อ มีไอคอนเตือน + ข้อความว่าไม่สำเร็จ + ปุ่ม ↻ ลองใหม่ / ↺ ย้อน / 🗑 ลบ */
+  //   คำ/ไอคอนที่บอกว่า "การ์ดนี้เจนไม่สำเร็จ" — ครอบทั้งไทยและอังกฤษ (Flow แปลข้อความตามภาษาที่ผู้ใช้ตั้ง)
+  const FAIL_RE = /ล้มเหลว|ไม่สำเร็จ|เกิดข้อผิดพลาด|ผิดพลาด|ลองใหม่|failed|failure|unsuccessful|error|went wrong|try again/i;
   function failedGenCard() {
+    //   ① ทางเดิม: ปุ่มลบ + ปุ่มลองใหม่ อยู่ในกล่องเดียวกัน + มีคำ/ไอคอนเตือน
     for (const d of $$('button,[role=button]').filter((b) => hasIcon(b, 'delete'))) {
       if (d.closest('.cdk-overlay-container') || d.closest('flow-editor-history-panel')) continue;  // เมนู/แผงประวัติ ไม่นับ
       let box = d.parentElement;
@@ -386,10 +389,29 @@
         const btns = $$('button,[role=button]', box);
         const retry = btns.find((b) => RETRY_ICONS.some((ic) => hasIcon(b, ic)));
         if (!retry) continue;
-        const warn = WARN_ICONS.some((ic) => hasIcon(box, ic)) || /ล้มเหลว|ไม่สำเร็จ|fail|error|unsuccessful/i.test(norm(box));
+        const warn = WARN_ICONS.some((ic) => hasIcon(box, ic)) || FAIL_RE.test(norm(box));
         if (warn) return { box, retry, del: d };
         break;
       }
+    }
+    /* ② ทางสำรอง — ยึด "ข้อความ" เป็นหลัก ไม่ยึดชื่อไอคอน (owner 2026-09-10:
+          "ถ้า Flow เป็นภาษาไทยจะเช็คได้ไหม · ตอนนี้ Flow อังกฤษยังนิ่งไป 3-4 นาที")
+          Google เปลี่ยนชื่อไอคอน/เปลี่ยนเป็น SVG เมื่อไหร่ ทางแรกก็ตาบอดทันที
+          ทางนี้: หากล่องเล็กที่สุดที่มีคำว่า "ล้มเหลว/Failed" + มีปุ่มอย่างน้อย 2 ปุ่ม (ลองใหม่/ย้อน/ลบ) */
+    let best = null;
+    for (const el of $$('div,section,article')) {
+      if (el.closest('.cdk-overlay-container') || el.closest('flow-editor-history-panel')) continue;
+      const t = norm(el);
+      if (!t || t.length > 400 || !FAIL_RE.test(t)) continue;
+      const btns = $$('button,[role=button]', el).filter((b) => !b.disabled);
+      if (btns.length < 2) continue;
+      if (!best || t.length < norm(best.el).length) best = { el, btns };
+    }
+    if (best) {
+      const del = best.btns.find((b) => hasIcon(b, 'delete')) || best.btns[best.btns.length - 1];
+      //   ปุ่มลองใหม่ = ตัวที่ไม่ใช่ปุ่มลบ (ปกติเป็นปุ่มแรกของแถว)
+      const retry = best.btns.find((b) => RETRY_ICONS.some((ic) => hasIcon(b, ic))) || best.btns.find((b) => b !== del) || best.btns[0];
+      return { box: best.el, retry, del };
     }
     return null;
   }
@@ -399,6 +421,13 @@
     const label = what || (kind === 'image' ? 'ภาพ' : 'วิดีโอ');
     for (let attempt = 1; attempt <= 3; attempt++) {
       let failed = false;
+      /* 💓 เต้นเป็นจังหวะระหว่างรอ (owner 2026-09-10: "log มันค้าง เลยคิดว่ามันนิ่งเกินไป")
+         เดิมระหว่างรอ 6-12 นาทีไม่มี log สักบรรทัด = แยกไม่ออกว่า "กำลังรอ" หรือ "ตายไปแล้ว" */
+      const _t0 = Date.now();
+      const hb = setInterval(() => {
+        const sec = Math.round((Date.now() - _t0) / 1000);
+        say(`   ⏳ ยังรอ${label}อยู่... ${sec >= 60 ? Math.floor(sec / 60) + ' นาที ' + (sec % 60) + ' วิ' : sec + ' วิ'} (ปกติ 1-3 นาที · ถ้า Flow ขึ้นการ์ดล้มเหลวจะกดลองใหม่ให้เอง)`);
+      }, 30000);
       const w = setInterval(() => { try { if (failedGenCard()) failed = true; } catch (_) {} }, 5000);
       let tile = null;
       try {
@@ -406,7 +435,7 @@
           waitNewTile(kind, before, timeout, excludeRe).catch(() => null),
           (async () => { while (!failed) await sleep(2000); return null; })(),
         ]);
-      } finally { clearInterval(w); }
+      } finally { clearInterval(w); clearInterval(hb); }
       if (tile) return tile;
       const fc = failedGenCard();
       //   หมดเวลาจริง ๆ (ไม่ได้ขึ้นการ์ดล้มเหลว) → โยน error แบบเดิม ให้ฝั่งแอปรีทาย/เขียนพรอมต์ใหม่

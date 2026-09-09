@@ -1,8 +1,14 @@
 {
-  "latest": "0.8.3",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.3/PD-Auto-Footage-v0.8.3-protected.zip",
-  "changelog": "🌐 ใช้ได้กับ Flow แอปใหม่ (flow.google.com) ครบทั้ง Express และ Merge Mode · เลือกโมเดลได้จริง + Imagen 4 / Omni 4-6 วิ · เลือกได้ว่าจะเก็บหรือลบโปรเจ็ค Flow · จบงานกลับหน้าหลักให้เอง",
+  "latest": "0.8.4",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.4/PD-Auto-Footage-v0.8.4-protected.zip",
+  "changelog": "🔎 Flow เจนไม่ผ่าน → เจอการ์ด 'ล้มเหลว' แล้วกดลองใหม่ให้เอง (ใช้ได้ทั้งไทย/อังกฤษ) · 💓 log บอกทุก 30 วิระหว่างรอ ไม่เงียบอีก · 🎬 Merge บนแอปใหม่กันหยิบคลิปผิดใบ/ภาพฉากปนกัน · 🇹🇭 แปล error ของ Flow เป็นภาษาคน + สลับบัญชีเมื่อติดลิมิต",
   "versions": [
+    {
+      "version": "0.8.4",
+      "date": "2026-09-10",
+      "changelog": "🔎 Flow เจนไม่ผ่าน → เจอการ์ด 'ล้มเหลว' แล้วกดลองใหม่ให้เอง (ใช้ได้ทั้งไทย/อังกฤษ) · 💓 log บอกทุก 30 วิระหว่างรอ ไม่เงียบอีก · 🎬 Merge บนแอปใหม่กันหยิบคลิปผิดใบ/ภาพฉากปนกัน · 🇹🇭 แปล error ของ Flow เป็นภาษาคน + สลับบัญชีเมื่อติดลิมิต",
+      "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.4/PD-Auto-Footage-v0.8.4-protected.zip"
+    },
     {
       "version": "0.8.3",
       "note": "🌐 ใช้ได้กับ Flow แอปใหม่ (flow.google.com) ครบทั้ง Express และ Merge Mode · เลือกโมเดลได้จริง + Imagen 4 / Omni 4-6 วิ · เลือกได้ว่าจะเก็บหรือลบโปรเจ็ค Flow · จบงานกลับหน้าหลักให้เอง"

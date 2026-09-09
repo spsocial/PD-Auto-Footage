@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PD Auto Footage",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "PD Auto Footage — สร้างคลิปโฆษณาแนวฟุตเทจมืออาชีพ + เสียงพากย์ + ซับ + เพลง โพส TikTok ปักตะกร้าอัตโนมัติ",
   "permissions": [
     "activeTab",
