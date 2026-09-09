@@ -102,6 +102,9 @@ async function runMergeGenerateSceneNewApp(data) {
 
     // ① ตั้งค่าตามที่ผู้ใช้เลือก (สัดส่วน/โมเดลภาพ/x1) — แอปใหม่ตั้งผ่านเมนูตั้งค่า ไม่ใช่ปุ่มเก่า
     await M.configure({ mode: 'Image', aspect, imageModel, count: 1 });
+    /* 🧹 ล้างรูปที่ค้างในกล่องพ้อมก่อนเสมอ (owner 2026-09-09: ฉาก 2 เอา "ภาพฉาก 1 + รูปสินค้า" มาปนกัน)
+       หลัง Animate ฉากก่อน Flow ทิ้งภาพฉากนั้นไว้เป็นชิปในกล่องพ้อม */
+    try { await M.clearIngredients(); } catch (_) {}
 
     // ② รูป ref — อัปครั้งเดียวต่อโปรเจ็ค แล้วฉากถัดไปหยิบจากคลังมาแนบ
     const refs = (Array.isArray(d.productImages) ? d.productImages : [])
@@ -133,8 +136,12 @@ async function runMergeGenerateSceneNewApp(data) {
     await M.generate();
     const vidTile = await M.waitNewTileSmart('video', vidBefore, 12 * 60 * 1000, /pd-(product|character)/i, 'วิดีโอ');
 
-    // ⑤ โหลดคลิปจากการ์ด (⋮ → Download) — flow-hook ดักเป็น base64 ให้เหมือนเส้นเดิม
+    /* ⑤ โหลดคลิปจากการ์ด (⋮ → Download) — flow-hook ดักเป็น base64 ให้เหมือนเส้นเดิม
+       ⚠️ owner 2026-09-09: "เซฟผิดคลิป — คลิปยังไม่ทันเสร็จ มันคิดว่าเสร็จแล้วไปเอาคลิปเดิมที่เซฟไปแล้ว"
+       ต้นเหตุ: ไฟล์ของฉากก่อนหน้าอาจถูกดักเข้ามาช้า (มาโผล่ตอนฉากนี้กำลังรอ) → เผลอรับของเก่า
+       กัน 2 ชั้น: ① เคลียร์ช่องรับก่อน ② รับเฉพาะไฟล์ที่ "ดักได้หลังจากเรากดดาวน์โหลดฉากนี้" เท่านั้น */
     window.__flowFinalVideoData__ = null;
+    const _clipT0 = Date.now();
     let got = null;
     for (let a = 1; a <= 2 && !got; a++) {
       try {
@@ -145,10 +152,17 @@ async function runMergeGenerateSceneNewApp(data) {
           const pick = opts.find((b) => /720/.test(b.textContent || '')) || opts[0];
           await M.humanClick(pick, 'เลือกคุณภาพ/ยืนยันดาวน์โหลด');
         }
-        got = await M.waitFor(() => (window.__flowFinalVideoData__ && window.__flowFinalVideoData__.base64 ? window.__flowFinalVideoData__ : null), 120000, 2000);
+        got = await M.waitFor(() => {
+          const v = window.__flowFinalVideoData__;
+          if (!v || !v.base64) return null;
+          if ((v.timestamp || 0) < _clipT0) return null;                 // ไฟล์เก่าค้างท่อ — ไม่เอา
+          if (window.__pdLastMergeClipSig === (v.size + ':' + String(v.filename || ''))) return null;  // ซ้ำกับฉากก่อน
+          return v;
+        }, 180000, 2000);
       } catch (e) { console.log('[Merge new-app] download fail:', e && e.message); }
     }
-    if (!got) return { success: false, error: 'เจนคลิปเสร็จแล้วแต่ดึงไฟล์จากหน้า Flow ไม่ได้', imageUrl };
+    if (!got) return { success: false, error: 'เจนคลิปเสร็จแล้วแต่ดึงไฟล์จากหน้า Flow ไม่ได้ (หรือได้ไฟล์เดิมซ้ำ)', imageUrl };
+    window.__pdLastMergeClipSig = (got.size + ':' + String(got.filename || ''));   // จำไว้กันหยิบไฟล์เดิมซ้ำในฉากถัดไป
     return { success: true, sceneIndex, videoSize: got.size || 0, imageUrl, imageBase64: null };
   } catch (err) {
     return { success: false, error: (err && err.message) || String(err), imageUrl: '' };

@@ -703,6 +703,25 @@
     const all = $$('flow-image-ingredient-chip, flow-ingredient-chip', box);
     return all.filter((c2) => !all.some((o) => o !== c2 && o.contains(c2))).length;
   };
+  /* 🧹 ล้างชิปรูป ref ที่ค้างอยู่ในกล่องพ้อม (owner 2026-09-09 · เจอในบอท extension)
+     หลังกด Animate ฉากก่อนหน้า Flow จะทิ้ง "ภาพฉากนั้น" ไว้เป็นชิปในกล่องพ้อม
+     → ฉากถัดไปถ้าไม่ล้างก่อน จะเจนโดยใช้ ภาพฉากเก่า + รูปสินค้า ปนกัน = ภาพมั่ว */
+  async function clearIngredients() {
+    const box = () => document.querySelector('flow-base-prompt-box') || document.querySelector('flow-prompt-box') || document;
+    for (let i = 0; i < 12 && chipCount() > 0; i++) {
+      const chips = $$('flow-image-ingredient-chip, flow-ingredient-chip', box());
+      const outer = chips.filter((c) => !chips.some((o) => o !== c && o.contains(c)));
+      const target = outer[outer.length - 1];
+      if (!target) break;
+      const x = $$('button,[role=button]', target).find((b) => hasIcon(b, 'close') || /remove|ลบ|เอาออก/i.test(b.getAttribute('aria-label') || ''))
+        || $$('button,[role=button]', target)[0];
+      if (!x) break;
+      try { await humanClick(x, 'เอาชิปรูปเดิมออก'); } catch (_) { break; }
+      await sleep(300);
+    }
+    if (chipCount() > 0) say('   ⚠️ ยังมีรูปค้างในกล่องพ้อม ' + chipCount() + ' ใบ — ภาพอาจปนของฉากก่อน', 'warn');
+  }
+
   async function attachOne(pickIdx) {
     const box = document.querySelector('flow-base-prompt-box') || document.querySelector('flow-prompt-box') || document;
     const add = $$('button', box).find((b) => /Add ingredients/i.test(b.getAttribute('aria-label') || ''))
@@ -828,7 +847,7 @@
   }
 
   window.__pdMergeNew = {
-    attachIngredients, tileKeys, uploadViaMenu, openAddMenu, grabVideo, tileImageSrc, leaveScene, inScene, failedCard, deleteLastClip, ensureHistoryOpen, timelineClipEls,
+    attachIngredients, clearIngredients, tileKeys, uploadViaMenu, openAddMenu, grabVideo, tileImageSrc, leaveScene, inScene, failedCard, deleteLastClip, ensureHistoryOpen, timelineClipEls,
     pickModelFamily, configure, currentSettings, imgModelRe, durOfModel, typePrompt, clearPrompt, generate, uploadRefs, fileInput, waitReady, ensureAgentOff,
     imageTiles, videoTiles, waitNewTile, waitNewTileSmart, failedGenCard, tileMenu, openScene, extendInfo, extendOnce,
     humanClick, waitFor, closeOverlay, promptBox, genBtn,
