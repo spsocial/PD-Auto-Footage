@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎬 รวมคลิปเอง — PD Auto Footage</title>
+  <link rel="stylesheet" href="panel.css">
+  <style>
+    body.cm-page { max-width: 920px; margin: 0 auto; padding: 18px 18px 120px; }
+    .cm-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .cm-head img { width: 40px; height: 40px; border-radius: 10px; }
+    .cm-head .t1 { font-size: 18px; font-weight: 800; }
+    .cm-head .t2 { font-size: 12px; color: var(--muted); }
+    .cm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cm-set { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px; margin-bottom: 12px; }
+    .cm-set-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .cm-set-title { font-size: 14px; font-weight: 800; color: var(--gold); }
+    .cm-drop { border: 1.5px dashed var(--border); border-radius: 10px; padding: 16px; text-align: center; color: var(--muted); cursor: pointer; font-size: 13px; background: var(--surface-2); }
+    .cm-drop:hover, .cm-drop.over { border-color: var(--accent); color: var(--text); }
+    .cm-cliplist { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; max-height: 320px; overflow-y: auto; }
+    .cm-clip { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
+    .cm-clip .num { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 11px; }
+    .cm-clip video { width: 40px; height: 56px; object-fit: cover; border-radius: 5px; background: #000; flex-shrink: 0; }
+    .cm-clip .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cm-clip .ops { display: flex; gap: 3px; }
+    .cm-clip .ops button { background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 5px; width: 24px; height: 24px; cursor: pointer; font-size: 12px; }
+    .cm-clip .ops button:hover { color: var(--text); border-color: var(--accent); }
+    .cm-clip .ops .del:hover { color: var(--danger); border-color: var(--danger); }
+    .cm-setcount { font-size: 11px; color: var(--muted); }
+    .cm-actionbar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(11,11,14,0.96); border-top: 1px solid var(--border); padding: 12px 18px; display: flex; gap: 10px; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+    #cmLog { margin-top: 14px; background: #0a0a0c; border: 1px solid var(--border); border-radius: 10px; padding: 10px; height: 180px; overflow-y: auto; font-size: 11.5px; font-family: monospace; line-height: 1.6; display: none; }
+    #cmLog .err { color: #f87171; } #cmLog .ok { color: #4ade80; } #cmLog .warn { color: #fcd34d; }
+  </style>
+</head>
+<body class="cm-page">
+  <div class="cm-head">
+    <img src="../assets/logo.png" alt="">
+    <div>
+      <div class="t1">🎬 รวมคลิปเอง</div>
+      <div class="t2">อัปคลิปหลายฉากของคุณ → บอทต่อให้เป็นคลิปเดียว เรียงตามลำดับ (สูงสุด 20 ฉาก/ชุด · 5 ชุด)</div>
+    </div>
+  </div>
+
+  <!-- ตั้งค่ารวม -->
+  <section class="card">
+    <div class="card-head"><span>⚙️ ตั้งค่า</span></div>
+    <div class="card-body">
+      <div class="cm-grid">
+        <div>
+          <label class="field-label">📐 อัตราส่วน</label>
+          <select id="cmAspect">
+            <option value="9:16" selected>📱 9:16</option>
+            <option value="16:9">🖥️ 16:9</option>
+            <option value="1:1">⬛ 1:1</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">🎬 คุณภาพ</label>
+          <select id="cmQuality"><option value="720p" selected>720p</option></select>
+        </div>
+      </div>
+
+      <div class="toggle-row mt8">
+        <div><div class="toggle-label">✂️ ตัดช่วงเงียบ</div><div class="toggle-sub">ตัดช่วงเงียบ/ไม่มีเสียงพูดออก ให้กระชับ</div></div>
+        <label class="switch"><input type="checkbox" id="cmSilenceCut"><span class="track"></span></label>
+      </div>
+
+      <div class="toggle-row mt8">
+        <div><div class="toggle-label">🎵 เพลงแบ็คกราวด์</div><div class="toggle-sub">คลุมใต้เสียงเดิมของคลิป</div></div>
+        <label class="switch"><input type="checkbox" id="cmMusicToggle"><span class="track"></span></label>
+      </div>
+      <div id="cmMusicOpts" style="display:none;">
+        <div class="indent">
+          <select id="cmMusicMood">
+            <option value="upbeat" selected>🥁 Upbeat</option>
+            <option value="happy">😊 Happy</option>
+            <option value="cinematic">🎬 Cinematic</option>
+            <option value="luxury">✨ Luxury</option>
+            <option value="chill">🌊 Chill</option>
+            <option value="calm">🕊️ Calm</option>
+          </select>
+          <span class="hint m0" id="cmMusicVolLabel" style="width:38px; text-align:right;">18%</span>
+          <input type="range" id="cmMusicVol" min="5" max="40" value="18" style="flex:1;">
+        </div>
+        <div class="row gap6" style="margin:6px 0 0 4px;">
+          <button class="btn btn-ghost" id="cmMusicUploadBtn" style="padding:7px 12px; font-size:11px;">📁 ใช้เพลงเอง</button>
+          <span class="hint m0" id="cmMusicName" style="flex:1;"></span>
+          <input type="file" id="cmMusicFile" accept="audio/*,.mp3" hidden>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- v0.3: โหมดยำ (Remix) -->
+  <section class="card">
+    <div class="card-body">
+      <div class="toggle-row">
+        <div><div class="toggle-label">🥗 โหมดยำ (สุ่มยำคลิป)</div><div class="toggle-sub">แนบคลิปกองเดียว → สุ่มยำออกมาหลายคลิป แต่ละอันเรียงมั่วต่างกัน</div></div>
+        <label class="switch"><input type="checkbox" id="cmRemixToggle"><span class="track"></span></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- โหมดปกติ: 5 ชุด เรียงเอง -->
+  <div id="cmNormalWrap">
+    <div id="cmSetsWrap"></div>
+    <button class="btn btn-ghost full" id="cmAddSetBtn">➕ เพิ่มชุด (สูงสุด 5)</button>
+  </div>
+
+  <!-- โหมดยำ -->
+  <div id="cmRemixWrap" style="display:none;">
+    <div class="cm-set">
+      <div class="cm-set-head">
+        <span class="cm-set-title">🥗 กองคลิปสำหรับยำ</span>
+        <span class="cm-setcount" id="cmPoolCount">0 คลิป</span>
+      </div>
+      <div class="cm-drop" id="cmPoolDrop">⬆️ คลิกหรือลากคลิปมาวาง (5-30 อัน) — บอทจะสุ่มยำจากกองนี้</div>
+      <input type="file" accept="video/*" multiple hidden id="cmPoolFile">
+      <div class="cm-cliplist" id="cmPoolList"></div>
+    </div>
+
+    <section class="card">
+      <div class="card-head"><span>🎲 ตั้งค่ายำ</span></div>
+      <div class="card-body">
+        <div class="cm-grid">
+          <div>
+            <label class="field-label">🔢 อยากได้กี่คลิป</label>
+            <input type="number" id="cmRemixCount" min="1" max="20" value="5">
+          </div>
+          <div>
+            <label class="field-label">✂️ ตัดกี่ช่วงต่อ 1 ผลลัพธ์ (ซ้ำคลิปได้)</label>
+            <div class="row gap6">
+              <input type="number" id="cmRemixMinClips" min="2" max="40" value="6" style="width:60px;">
+              <span class="hint m0">ถึง</span>
+              <input type="number" id="cmRemixMaxClips" min="2" max="40" value="12" style="width:60px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- A: ไม่มีเสียงพากย์ → ตั้งความยาวต่อช่วง -->
+        <div id="cmRemixDurRow" class="mt8">
+          <label class="field-label">⏱️ ความยาวต่อช่วง (ตัดสั้นๆ สลับกัน)</label>
+          <select id="cmRemixDurMode">
+            <option value="random" selected>🎲 สุ่ม (กำหนดช่วง)</option>
+            <option value="fixed">⏱️ เท่ากันทุกช่วง</option>
+            <option value="full">เต็มคลิป (ไม่ตัด)</option>
+          </select>
+          <div class="row gap6 mt8" id="cmRemixDurVals">
+            <input type="number" id="cmRemixDurMin" min="1" max="15" step="0.5" value="2" style="width:60px;">
+            <span class="hint m0">ถึง</span>
+            <input type="number" id="cmRemixDurMax" min="1" max="15" step="0.5" value="3" style="width:60px;">
+            <span class="hint m0">วินาที</span>
+          </div>
+        </div>
+
+        <!-- B: ใส่เสียงพากย์ + ซับ -->
+        <div class="toggle-row mt8">
+          <div><div class="toggle-label">🎙️ ใส่เสียงพากย์ + ซับ (AI)</div><div class="toggle-sub">AI คิดบท+พากย์ → ยำคลิปให้พอดีความยาวเสียง + ซับตรงเป๊ะ</div></div>
+          <label class="switch"><input type="checkbox" id="cmRemixVoice"><span class="track"></span></label>
+        </div>
+        <div id="cmRemixVoiceOpts" style="display:none;">
+          <label class="field-label">📦 หัวข้อ/สินค้า (ให้ AI คิดบทพูดถึง)</label>
+          <input type="text" id="cmRemixTopic" placeholder="เช่น ครีมกันแดด, ร้านกาแฟ, รองเท้าวิ่ง">
+          <div class="cm-grid mt8">
+            <div>
+              <label class="field-label">🎬 จำนวนฉาก/คลิป</label>
+              <select id="cmRemixScenes"><option value="random" selected>🎲 สุ่ม 3-5 ฉาก</option><option value="3">3 ฉาก</option><option value="4">4 ฉาก</option><option value="5">5 ฉาก</option></select>
+            </div>
+            <div>
+              <label class="field-label">🎙️ เสียงพากย์</label>
+              <select id="cmRemixVoiceId">
+                <option value="charon">ชาย — ทุ้มลึก</option>
+                <option value="kore" selected>หญิง — มั่นใจ</option>
+                <option value="aoede">หญิง — นุ่มนวล</option>
+                <option value="puck">ชาย — เป็นกันเอง</option>
+              </select>
+            </div>
+          </div>
+          <label class="field-label mt8">💬 สไตล์ซับ</label>
+          <select id="cmRemixSubStyle">
+            <option value="tiktok_bold" selected>TikTok หนา</option>
+            <option value="yellow_viral">เหลืองไวรัล</option>
+            <option value="black_caption">กล่องดำ</option>
+            <option value="clean_white">ขาวคลีน</option>
+            <option value="none">ไม่ใส่ซับ</option>
+          </select>
+          <p class="hint">💡 ต้องใส่ API Key ในแผงบอทหลักก่อน (คิดบท+พากย์)</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="cmLog"></div>
+
+  <div class="cm-actionbar">
+    <span class="hint m0" id="cmSummary">ยังไม่มีคลิป</span>
+    <button class="btn btn-primary" id="cmRunBtn">🚀 รวมคลิปทั้งหมด</button>
+    <button class="btn btn-ghost" id="cmStopBtn" style="display:none;">⏹️ หยุด</button>
+  </div>
+
+  <script src="../lib/ffmpeg/ffmpeg-umd.js"></script>
+  <script src="../lib/ffmpeg/ffmpeg-util-umd.js"></script>
+  <script src="ai.js"></script>
+  <script src="tts.js"></script>
+  <script src="engine.js"></script>
+  <script src="clipmerge.js"></script>
+</body>
+</html>

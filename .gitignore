@@ -1,0 +1,4 @@
+# build output + release zips (ใหญ่ + มีสำเนาอยู่แล้วบน GitHub releases)
+dist/
+*.zip
+node_modules/

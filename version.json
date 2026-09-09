@@ -1,8 +1,12 @@
 {
-  "latest": "0.7.9",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.7.9/PD-Auto-Footage-v0.7.9-protected.zip",
-  "changelog": "🎬 แก้เจนวิดีโอเฟล Flow API 400 — Google เข้มลิมิตความยาวพรอมต์ใหม่ ระบบ ✂️ ตัดพรอมต์อัตโนมัติแล้วลองใหม่เอง (สินค้าเด็ก/บทยาว อาการได้บ้างไม่ได้บ้าง)",
+  "latest": "0.8.0",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.0/PD-Auto-Footage-v0.8.0-protected.zip",
+  "changelog": "🌐 รองรับ Flow แอปใหม่ (flow.google.com) — ใช้ได้ทั้ง API Direct และ Merge Mode · ของเดิมบน labs.google ยังใช้ได้เหมือนเดิม",
   "versions": [
+    {
+      "version": "0.8.0",
+      "note": "🌐 รองรับ Flow แอปใหม่ (flow.google.com) — ใช้ได้ทั้ง API Direct และ Merge Mode · ของเดิมบน labs.google ยังใช้ได้เหมือนเดิม"
+    },
     {
       "version": "0.7.9",
       "note": "🎬 แก้เจนวิดีโอเฟล Flow API 400 (Google เข้มลิมิตพรอมต์) — ✂️ ตัดพรอมต์อัตโนมัติ 2 ระดับ + ปรับ payload ตรงเว็บล่าสุด"

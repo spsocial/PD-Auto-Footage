@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PD Auto Footage</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+  <!-- ════════ Header ════════ -->
+  <header class="topbar">
+    <div class="brand">
+      <img src="../assets/logo.png" alt="" class="brand-logo">
+      <div>
+        <div class="brand-name">PD AUTO <span class="brand-mini">FOOTAGE</span></div>
+        <div class="brand-sub">โฆษณาฟุตเทจมืออาชีพ · อัตโนมัติ</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="license-pill" id="licensePill">⏳ ตรวจ license...</span>
+      <button class="icon-btn" id="settingsBtn" title="ตั้งค่า API">⚙️</button>
+    </div>
+  </header>
+
+  <!-- v0.3: แถบสลับโหมด (mode switcher) — บอกชัดว่าตอนนี้อยู่โหมดไหน -->
+  <!-- v0.7: ปิดโหมด "รวมคลิปเอง" (ซ่อนทั้งแถบ ไม่ลบโค้ด) — ฟีเจอร์นี้แยกไปขายเป็น PD Yum Clip แล้ว
+       เปิดกลับ: เอา display:none ออก -->
+  <div class="mode-switch" style="display:none;">
+    <button class="mode-tab active" id="modeAutoTab">✨ สร้างโฆษณา</button>
+    <button class="mode-tab" id="modeClipTab">🎬 รวมคลิปเอง <span class="ext">↗</span></button>
+  </div>
+
+  <!-- v0.3: ตั้งค่า — popup กลางจอ (เดิมกางบนหัวดูแปลก) -->
+  <div class="modal-overlay" id="settingsModal" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-head">
+        <span>⚙️ ตั้งค่า</span>
+        <button class="modal-x" id="settingsClose" title="ปิด">✕</button>
+      </div>
+      <div class="card-body">
+        <label class="field-label">✨ PD Auto AI Key หรือ 🔷 Gemini API Key</label>
+        <div class="row gap6">
+          <input type="password" id="apiKeyInput" placeholder="pdvip_live_... หรือ AIzaSy..." class="grow">
+          <button class="icon-btn api-eye" data-target="apiKeyInput" title="แสดง/ซ่อน">👁️</button>
+        </div>
+        <p class="hint">ใช้คิดบทโฆษณา + เสียงพากย์ (Gemini TTS) — คีย์เดียวจบ</p>
+
+        <a href="https://www.promptdee-ai.com/api-rental" target="_blank" id="buyPdKeyBtn" class="buy-key-btn">
+          🛒 ยังไม่มีคีย์? ซื้อ/สมัคร PD Auto AI Key
+          <span class="buy-key-sub">ง่ายสุด · คีย์เดียวจบ คิดบท+พากย์เสียง ไม่ต้องตั้งค่า Gemini เอง</span>
+        </a>
+        <p class="hint" style="margin-top:6px;">📈 ดู credits คงเหลือที่ <a href="https://www.promptdee-ai.com/dashboard/api-keys" target="_blank" style="color:#c084fc;">Dashboard</a></p>
+
+        <button class="btn btn-ghost full" id="saveSettingsBtn">💾 บันทึก</button>
+
+        <div class="ver-box">
+          <div class="ver-row">
+            <span>📦 เวอร์ชัน <b id="appVersion">0.6.7</b></span>
+            <span id="updateCheckResult" class="ver-status"></span>
+          </div>
+          <button class="btn btn-ghost full" id="checkUpdateBtn">🔄 เช็คอัปเดตเวอร์ชันใหม่</button>
+          <div id="versionHistory" class="ver-history"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- แบนเนอร์อัปเดต (โผล่เมื่อมีเวอร์ชันใหม่) -->
+  <div id="updateBanner" class="update-banner" style="display:none;">
+    <div class="ub-left">
+      <div class="ub-title" id="ubTitle">🆕 มีเวอร์ชันใหม่!</div>
+      <div class="ub-sub" id="ubSub"></div>
+    </div>
+    <div class="ub-actions">
+      <button class="ub-dl" id="ubDownload">⬇️ โหลด</button>
+      <button class="ub-x" id="ubClose">✕</button>
+    </div>
+  </div>
+
+  <!-- ════════ ① สินค้า ════════ -->
+  <section class="card">
+    <div class="card-head">
+      <span class="step-no">①</span><span>สินค้า</span>
+      <span class="card-count" id="productCount">0/50</span>
+    </div>
+    <div class="card-body">
+      <div class="row gap6">
+        <button class="btn btn-primary grow" id="fetchBasketBtn">🔄 ดึงจากตะกร้า TikTok</button>
+        <button class="btn btn-ghost" id="pickFullBtn" title="เลือกสินค้าแบบเต็มจอ">⛶ เต็มจอ</button>
+      </div>
+      <div class="product-grid" id="productGrid">
+        <div class="product-empty" id="productEmpty">
+          ยังไม่มีสินค้า — กด "🔄 ดึงจากตะกร้า" แล้วเลือกสินค้าที่จะทำโฆษณา (สูงสุด 50)
+        </div>
+      </div>
+      <div class="row space-between" id="productTools" style="display:none;">
+        <span class="hint m0">💡 กดที่การ์ดเพื่อเอาออก</span>
+        <button class="btn-mini danger" id="clearProductsBtn">🗑️ ล้างทั้งหมด</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ ② แนวโฆษณา ════════ -->
+  <section class="card">
+    <div class="card-head"><span class="step-no">②</span><span>แนวโฆษณา</span></div>
+    <div class="card-body">
+      <label class="field-label">🎯 โครงเรื่อง</label>
+      <select id="adStructure">
+        <option value="problem_solution" selected>🎯 เปิดด้วยปัญหา → ตอกย้ำ → โซลูชัน → CTA (แนะนำ)</option>
+        <option value="hard_sell">🔥 ขายแรง — โปรเด็ดตั้งแต่วิแรก → ย้ำคุณค่า → CTA</option>
+        <option value="storytelling">📖 เล่าเรื่อง — ชีวิตก่อน/หลังใช้สินค้า</option>
+        <option value="lifestyle">🌅 Lifestyle — สินค้าในชีวิตสวยๆ แบรนด์ดิ้งหรู</option>
+        <optgroup label="🆕 แนวตลก / ใกล้ตัว / ไวรัล">
+          <option value="funny">😂 ตลก/มุกป่วน — กวนๆ ทีเล่นทีจริง</option>
+          <option value="relatable">🏠 ใกล้ตัว — "เคยมั้ย..." เพื่อนเล่าให้เพื่อนฟัง</option>
+          <option value="ugc_review">🗣️ รีวิวบอกต่อ (UGC) — ดิบ จริงใจ น่าเชื่อ</option>
+          <option value="viral_trend">🔥 ตามกระแสไวรัล — POV/เทรนด์ TikTok ปังๆ</option>
+          <option value="dm_close">💬 ทักแชทปิดการขาย — กระตุ้นให้อินบอกซ์</option>
+          <option value="pai_ya">💊 ป้ายยา — อวยจนต้องกด สร้าง FOMO ของมันต้องมี</option>
+          <option value="veggie_drama">🥦 ละครผัก/ผลไม้หัวคน — ดราม่าตลกไวรัล</option>
+        </optgroup>
+        <optgroup label="🆕 โชว์สินค้า / ฟอร์แมตขายดี">
+          <option value="before_after">🔄 ก่อน-หลัง — โชว์ผลลัพธ์ต่างชัด (สกินแคร์/คลีนนิ่ง)</option>
+          <option value="asmr_satisfying">🤤 ASMR/ฟินๆ — โคลสอัพ+เสียงฟิน (อาหาร/ขนม)</option>
+          <option value="demo_howto">🔧 เดโม/วิธีใช้ — โชว์ใช้งานเป็นสเต็ป (แกดเจ็ต/ของใช้)</option>
+          <option value="listicle">🔢 นับข้อ/เหตุผล — "3 เหตุผลที่ต้องมี" ใช้ได้ทุกหมวด</option>
+          <option value="warehouse_hands">📦 โกดังเห็นแค่มือ — POV มือหยิบสินค้าในโกดัง ขายส่งพร้อมส่ง</option>
+          <option value="mirror_selfie">👗 เซลฟี่กระจกลองเสื้อ — ถ่ายกระจกใส่สินค้าโชว์ (เสื้อผ้า/แฟชั่น)</option>
+          <option value="minimal_cute">🤍 มินิมอลน่ารัก — บ้านโทนอุ่น ภาพนำ คำน้อย (ของใช้บ้าน/สัตว์เลี้ยง)</option>
+        </optgroup>
+        <option value="random">🎲 สุ่มโครงเรื่องทุกคลิป</option>
+      </select>
+
+      <!-- v0.2: สุ่มโครงเรื่อง — ติ๊กเลือกว่าจะสุ่มจากแนวไหนบ้าง -->
+      <div id="structureRandomPool" style="display:none;">
+        <label class="field-label">🎲 สุ่มจากโครงเรื่องที่ติ๊ก (แต่ละคลิปสุ่มใหม่)</label>
+        <div class="scene-pool-row" style="flex-direction:column; align-items:stretch; gap:5px;">
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="problem_solution" checked> 🎯 ปัญหา → โซลูชัน</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="hard_sell" checked> 🔥 ขายแรง</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="storytelling"> 📖 เล่าเรื่อง</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="lifestyle"> 🌅 Lifestyle</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="funny" checked> 😂 ตลก/มุกป่วน</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="relatable" checked> 🏠 ใกล้ตัว</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="ugc_review"> 🗣️ รีวิว UGC</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="viral_trend"> 🔥 ตามกระแสไวรัล</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="dm_close"> 💬 ทักแชทปิดการขาย</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="pai_ya"> 💊 ป้ายยา</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="veggie_drama"> 🥦 ละครผัก/ผลไม้หัวคน</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="before_after"> 🔄 ก่อน-หลัง</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="asmr_satisfying"> 🤤 ASMR/ฟินๆ</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="demo_howto"> 🔧 เดโม/วิธีใช้</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="listicle"> 🔢 นับข้อ/เหตุผล</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="warehouse_hands"> 📦 โกดังเห็นแค่มือ</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="mirror_selfie"> 👗 เซลฟี่กระจกลองเสื้อ</label>
+          <label class="struct-pool-chip"><input type="checkbox" class="structure-pool-cb" value="minimal_cute"> 🤍 มินิมอลน่ารัก</label>
+        </div>
+        <p class="hint">ติ๊กแนวที่อยากให้สุ่มสลับ · ไม่ติ๊กเลย = สุ่มจากทุกแนว</p>
+      </div>
+
+      <div class="row gap6 mt8">
+        <div class="grow">
+          <label class="field-label">🎬 จำนวนฉาก</label>
+          <select id="sceneCount">
+            <option value="2">2 ฉาก (~16 วิ) — สั้นปังๆ</option>
+            <option value="3">3 ฉาก (~24 วิ)</option>
+            <option value="4" selected>4 ฉาก (~32 วิ) ⭐</option>
+            <option value="5">5 ฉาก (~40 วิ)</option>
+            <option value="6">6 ฉาก (~48 วิ)</option>
+            <option value="7">7 ฉาก (~56 วิ)</option>
+            <option value="8">8 ฉาก (~64 วิ)</option>
+            <option value="9">9 ฉาก (~72 วิ)</option>
+            <option value="10">10 ฉาก (~80 วิ)</option>
+            <option value="random">🎲 สุ่มจำนวนฉาก</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="field-label">📐 อัตราส่วน</label>
+          <select id="aspectRatio">
+            <option value="9:16" selected>📱 9:16</option>
+            <option value="16:9">🖥️ 16:9</option>
+            <option value="1:1">⬛ 1:1</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="field-label">🎞️ ความละเอียดคลิป</label>
+          <select id="clipQuality">
+            <option value="720p" selected>720p — เร็วสุด</option>
+            <option value="1080p">1080p — ชัดขึ้น (ช้า+เครดิตมากกว่า)</option>
+            <option value="4k">4K — ชัดสุด (ช้ามาก+เครดิตเยอะ)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- v0.6.7: เลือกโมเดล AI ภาพ + วิดีโอ (แบบ PD Auto VIP) — tier ฟรีเฟล audio บ่อยกว่า -->
+      <div class="row gap6 mt8">
+        <div class="grow">
+          <label class="field-label">🖼️ โมเดลรูปภาพ</label>
+          <select id="imageModelSel">
+            <option value="nano_banana_pro" selected>Nano Banana Pro</option>
+            <option value="nano_banana_2">Nano Banana 2</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="field-label">🤖 โมเดลวีดีโอ</label>
+          <select id="videoModelSel">
+            <option value="veo_lite_lower" selected>Veo 3.1 Lite [ฟรี 0 เครดิต]</option>
+            <option value="veo_lite">Veo 3.1 Lite (ใช้เครดิต — เฟลน้อยกว่า)</option>
+            <option value="veo_fast">Veo 3.1 Fast (ใช้เครดิต — เร็ว/นิ่ง)</option>
+            <option value="omni_flash">Omni Flash (เลือกจำนวนวิได้ · 8/10s)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ⏱️ Omni Flash: เลือกจำนวนวินาที (โชว์เฉพาะตอนเลือก Omni Flash) -->
+      <div class="row gap6 mt8" id="omniSecondsWrap" style="display:none;">
+        <div class="grow">
+          <label class="field-label">⏱️ จำนวนวินาที (Omni Flash)</label>
+          <select id="omniSecondsSel">
+            <option value="8" selected>8 วินาที · ~12 เครดิต</option>
+            <option value="10">10 วินาที · ~15 เครดิต</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- v0.6.7: จำนวนรีทายสูงสุดต่อฉาก (คุมทั้งสร้างรูป+ทำคลิป) — ปรับได้ เผื่อคนอยากรีบ · ดีฟอลต์ 7 -->
+      <div class="row gap6 mt8">
+        <div class="grow">
+          <label class="field-label">🔁 รีทายสูงสุด/ฉาก</label>
+          <input type="number" id="maxRetries" min="1" max="15" value="7" step="1">
+          <div class="field-hint">น้อย = เร็ว/ยอมข้ามฉากไว · มาก = สู้จนสุด (ดีฟอลต์ 7)</div>
+        </div>
+        <div class="grow"></div>
+      </div>
+
+      <!-- v0.2: สุ่มจำนวนฉาก — ติ๊กเลือกว่าจะสุ่มจากกี่ฉากบ้าง (เลือกได้ตั้งแต่ 2) -->
+      <div id="sceneRandomPool" style="display:none;">
+        <label class="field-label">🎲 สุ่มจากจำนวนฉากที่ติ๊ก (แต่ละคลิปสุ่มใหม่)</label>
+        <div class="scene-pool-row">
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="2"> 2</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="3" checked> 3</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="4" checked> 4</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="5" checked> 5</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="6"> 6</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="7"> 7</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="8"> 8</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="9"> 9</label>
+          <label class="scene-pool-chip"><input type="checkbox" class="scene-pool-cb" value="10"> 10</label>
+        </div>
+        <p class="hint">เช่น ติ๊ก 2,3,4 → แต่ละคลิปสุ่มได้ 2 หรือ 3 หรือ 4 ฉาก · ไม่ติ๊กเลย = สุ่ม 3-5</p>
+      </div>
+
+      <label class="field-label mt8">⚙️ วิธีสร้างคลิป</label>
+      <select id="genEngine">
+        <option value="merge" selected>🛡️ Merge Mode — คลิกปุ่มจริงบนหน้า Flow ทน 403 สุด (ช้ากว่า)</option>
+        <option value="api">⚡ API Direct — เร็วสุด (เสี่ยง 403 มากกว่า)</option>
+      </select>
+      <p class="hint" id="mergeHint">🛡️ Merge Mode: บอท<b>กดปุ่มจริงบนหน้า Flow</b> (พิมพ์ prompt → กด Generate → animate → โหลด) เลียนแบบคนกด 100% → reCAPTCHA จับเป็นคน ทน 403 สุด · ⚠️ เปิดแท็บ Flow <b>ค้างไว้ให้เห็น อย่าสลับแท็บหนีหรือย่อจอ</b> · แถบ debugger สีเหลืองจะค้าง (ปกติ ห้ามปิด)</p>
+
+      <!-- v0.2: ขึ้นโปรเจ็คใหม่ทุกชิ้น (กลับหน้า Flow หลักก่อน → กัน ref ปนข้ามสินค้า) -->
+      <div class="toggle-row mt8">
+        <div>
+          <div class="toggle-label">🆕 ขึ้นโปรเจ็คใหม่ทุกสินค้า</div>
+          <div class="toggle-sub">แนะนำเปิด — กลับหน้า Flow หลักก่อนเริ่มแต่ละชิ้น กัน ref ปนข้ามสินค้า (ปิด = ทำต่อในโปรเจ็คเดิม เร็วกว่าแต่เสี่ยงปน)</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="newProjectEachSet" checked><span class="track"></span></label>
+      </div>
+
+      <label class="field-label mt8">✨ มู้ดภาพ</label>
+      <select id="visualMood">
+        <option value="cinematic" selected>✨ Cinematic หรู — แสงเงาแบบหนังโฆษณาทีวี</option>
+        <option value="luxury">💎 Luxury — พรีเมียม ทอง-ดำ มีระดับ</option>
+        <option value="minimal">⬜ Minimal Clean — เรียบ สว่าง สินค้าเด่น</option>
+        <option value="energetic">⚡ สดใสมีพลัง — สีจัด ไดนามิก วัยรุ่น</option>
+        <option value="nature">🌿 ธรรมชาติ — แสงแดด นุ่มนวล ออร์แกนิก</option>
+        <option value="random">🎲 สุ่มมู้ดทุกคลิป</option>
+      </select>
+      <p class="hint">ภาพแต่ละฉากเจนใหม่คนละภาพแบบฟุตเทจมืออาชีพ — ไม่มีคนยืนถือสินค้าพูด</p>
+
+      <!-- v0.6.7: เลือกสไตล์ฟอนต์ "ข้อความพาดหัวฉากแรก" — default = สุ่มสไตล์ (เอา AI-เลือกเองออก เพราะไม่สวย) -->
+      <label class="field-label mt8">✏️ ฟอนต์พาดหัวฉากแรก</label>
+      <select id="coverFontStyle">
+        <option value="casual_real">🏠 บ้านๆ เรียลๆ — ตัวหนาสดใส แบบคลิปรีวิวชาวบ้าน</option>
+        <option value="tiktok_bold">📱 TikTok Bold — ขาว ขอบดำ แบบแคปชั่นไวรัล</option>
+        <option value="handwritten">✍️ ลายมือ Marker — เขียนมือเรียลๆ อบอุ่น</option>
+        <option value="pop_sale">💥 ป้ายลด/โปร — สีจ๊าบ กรอบดาว สไตล์เซลล์</option>
+        <option value="news_banner">📰 ข่าวด่วน — แถบแดง/ดำ ตัวขาว เร่งด่วน</option>
+        <option value="cute_bubble">🍬 กลมป่องน่ารัก — พาสเทล สดใส (ขนม/ของน่ารัก)</option>
+        <option value="bold_premium">💼 หนาพรีเมียม — คมชัด มืออาชีพ ทันสมัย</option>
+        <option value="elegant_serif">💎 Serif หรู — สง่างามแบบนิตยสาร</option>
+        <option value="random" selected>🎲 สุ่มสไตล์ทุกคลิป (แนะนำ)</option>
+      </select>
+      <p class="hint">มีผลเฉพาะข้อความพาดหัวฉากแรก · ค่าเริ่มต้น = สุ่มสไตล์ทุกคลิป (แต่ละคลิปได้ฟอนต์ต่างกัน)</p>
+
+      <!-- v0.2: ตัวละครหลัก (ออปชัน) — ใช้กับทุกสินค้า -->
+      <div class="toggle-row mt8">
+        <div>
+          <div class="toggle-label">🧑 ใช้ตัวละครหลัก (ออปชัน)</div>
+          <div class="toggle-sub">แนบรูปคน 1 รูป → เป็นพรีเซนเตอร์คนเดิมทุกคลิป ทุกสินค้า</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="charToggle"><span class="track"></span></label>
+      </div>
+      <div id="charOptions" style="display:none;">
+        <div class="row gap6" style="margin-top:6px; align-items:stretch;">
+          <div class="char-upload" id="charUpload" title="แนบรูปตัวละคร">
+            <input type="file" id="charFileInput" accept="image/*" hidden>
+            <img id="charPreview" alt="" style="display:none;">
+            <span id="charPlaceholder">📷<br>แนบรูป</span>
+          </div>
+          <div class="grow">
+            <label class="field-label">เพศตัวละคร (บอก AI ให้ใส่ในฉาก)</label>
+            <select id="charGender">
+              <option value="female" selected>👩 หญิง</option>
+              <option value="male">👨 ชาย</option>
+              <option value="">ไม่ระบุเพศ</option>
+            </select>
+            <label class="field-label mt8">รายละเอียดเพิ่ม (ออปชัน)</label>
+            <input type="text" id="charDesc" placeholder="เช่น สาวออฟฟิศ, คุณแม่บ้าน, วัยรุ่น">
+          </div>
+        </div>
+        <p class="hint">🧑 ตัวละครจะปรากฏในคลิป ใช้/ถือ/นำเสนอสินค้า (ยังไม่พูด — เสียงพากย์ทับ) · AI อิงรูปนี้ทุกฉากเหมือนกันทั้งหมด</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ ③ เสียงพากย์ ════════ -->
+  <section class="card">
+    <div class="card-head"><span class="step-no">③</span><span>เสียงพากย์</span></div>
+    <div class="card-body">
+      <label class="field-label">🗣️ ระบบเสียงพากย์</label>
+      <select id="ttsProvider">
+        <option value="gemini" selected>✨ Gemini TTS — เสียงสำเร็จรูป 4 เสียง (เร็ว)</option>
+        <option value="voiceclone">🎙️ เสียงโคลน (VoiceClone) — เสียงของคุณเอง</option>
+      </select>
+
+      <!-- Gemini: รายการเสียงสำเร็จรูป -->
+      <div id="geminiVoiceBox">
+        <div class="voice-list mt8" id="voiceList">
+          <!-- panel.js เติมรายการเสียง + ปุ่มฟังตัวอย่าง -->
+        </div>
+      </div>
+
+      <!-- VoiceClone: server + key (เสียง default ของบัญชีลูกค้า) -->
+      <div id="voiceCloneOptions" style="display:none;">
+        <label class="field-label mt8">🔑 VoiceClone API Key <span style="color:#71717a;font-weight:400;">(ใส่แค่ตัวนี้)</span></label>
+        <div class="row gap6">
+          <input type="password" id="vcApiKey" placeholder="vc_live_... (สร้างที่หน้า Developers)" class="grow">
+          <button class="icon-btn api-eye" data-target="vcApiKey" title="แสดง/ซ่อน">👁️</button>
+        </div>
+
+        <a id="vcSignupLink" href="#" target="_blank" class="buy-key-btn">
+          🎙️ ยังไม่มีคีย์? สมัคร / รับ API Key ที่เว็บ VoiceClone
+          <span class="buy-key-sub">คลิกไปสมัคร → เข้าสู่ระบบ → หน้า Developers เพื่อสร้าง API Key มาวางที่นี่</span>
+        </a>
+
+        <button class="btn btn-ghost full mt8" id="vcTestBtn">🔌 ทดสอบเชื่อมต่อ + ฟังเสียงตัวอย่าง</button>
+        <p class="hint">ใช้เสียงที่คุณอัปไว้บนเว็บ VoiceClone (เสียง default ของบัญชี) — บอทส่งแค่บทพูด ระบบดึงเสียงคุณมาพากย์ให้ · ⚠️ ช้ากว่า Gemini (พากย์ทีละประโยค ~10-30 วิ) + กินเครดิต VoiceClone ทุกฉาก</p>
+      </div>
+
+      <div class="row gap6 mt8">
+        <div class="grow">
+          <label class="field-label">⏩ ความเร็วพูด</label>
+          <select id="voiceSpeed">
+            <option value="0.9">ช้านุ่ม</option>
+            <option value="1.0" selected>ปกติ</option>
+            <option value="1.1">กระชับ</option>
+          </select>
+        </div>
+      </div>
+      <p class="hint" id="geminiHint">เสียงจาก Gemini TTS — บอทคิดบทให้เข้ากับสินค้า แล้วพากย์ทีละประโยค (timing ซับแม่นเป๊ะ)</p>
+    </div>
+  </section>
+
+  <!-- ════════ ④ ซับ + เพลง ════════ -->
+  <section class="card">
+    <div class="card-head"><span class="step-no">④</span><span>ซับ + เพลง</span></div>
+    <div class="card-body">
+      <label class="field-label">💬 สไตล์ซับไตเติล</label>
+      <div class="sub-style-row" id="subStyleRow">
+        <div class="sub-style selected" data-style="tiktok_bold"><span class="sub-demo s1">ลดเดือด 50%</span><span>TikTok หนา</span></div>
+        <div class="sub-style" data-style="clean_white"><span class="sub-demo s2">ลดเดือด 50%</span><span>ขาวคลีน</span></div>
+        <div class="sub-style" data-style="gold_premium"><span class="sub-demo s3">ลดเดือด 50%</span><span>ทองพรีเมียม</span></div>
+        <div class="sub-style" data-style="yellow_viral"><span class="sub-demo s5">ลดเดือด 50%</span><span>เหลืองไวรัล</span></div>
+        <div class="sub-style" data-style="red_hot"><span class="sub-demo s6">ลดเดือด 50%</span><span>แดงเดือด</span></div>
+        <div class="sub-style" data-style="neon_cyan"><span class="sub-demo s7">ลดเดือด 50%</span><span>นีออนฟ้า</span></div>
+        <div class="sub-style" data-style="black_caption"><span class="sub-demo s8">ลดเดือด 50%</span><span>กล่องดำ</span></div>
+        <div class="sub-style" data-style="pastel_cute"><span class="sub-demo s9">ลดเดือด 50%</span><span>พาสเทลน่ารัก</span></div>
+        <div class="sub-style" data-style="green_money"><span class="sub-demo s10">ลดเดือด 50%</span><span>เขียวเงิน</span></div>
+        <div class="sub-style" data-style="none"><span class="sub-demo s4">— ไม่ใส่ —</span><span>ไม่เอาซับ</span></div>
+      </div>
+
+      <div class="row gap6 mt8" id="subOptions">
+        <div class="grow">
+          <label class="field-label">🔤 ฟอนต์ซับ</label>
+          <select id="subFont">
+            <option value="kanit" selected>Kanit — หนาแน่น (ฮิตสุด)</option>
+            <option value="itim">Itim — ลายมือน่ารัก</option>
+            <option value="prompt">Prompt — โมเดิร์นคม</option>
+            <option value="mitr">Mitr — หนาอ่านง่าย</option>
+            <option value="chonburi">Chonburi — เก๋มีสไตล์</option>
+            <option value="sriracha">Sriracha — ลายมือสนุก</option>
+            <option value="baijamjuree">Bai Jamjuree — เทค</option>
+            <option value="chakra">Chakra Petch — เกมมิ่ง</option>
+            <option value="k2d">K2D — กลมสะอาด</option>
+            <option value="mali">Mali — ลายมือนุ่ม</option>
+            <option value="bold">กลมหนา (เดิม)</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="field-label">✨ เอฟเฟกต์ตอนขึ้น</label>
+          <select id="subAnim">
+            <option value="fade" selected>จางเข้า (Fade)</option>
+            <option value="pop">เด้ง (Pop) ✨</option>
+            <option value="zoom">ซูมเข้า (Zoom)</option>
+            <option value="fadepop">ฉ่า (จาง+เด้ง) 🔥</option>
+            <option value="none">ไม่มี (ขึ้นทันที)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- v0.7: การขึ้นซับ (ทีละคำ CapCut) + ตำแหน่งซับ — พอร์ตจาก PD Yum Clip -->
+      <div class="row gap6 mt8">
+        <div class="grow">
+          <label class="field-label">📏 การขึ้นซับ</label>
+          <select id="subSplit">
+            <option value="normal" selected>ปกติ — การ์ดวลีสั้น (แนะนำ)</option>
+            <option value="word">⚡ ทีละคำ รัวๆ (สไตล์ CapCut) 🔥</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="field-label">📍 ตำแหน่งซับ</label>
+          <select id="subPos">
+            <option value="0.10">⬇️ ชิดล่าง</option>
+            <option value="0.24" selected>🎯 มาตรฐาน (เดิม)</option>
+            <option value="0.32">กลางล่าง</option>
+            <option value="0.45">↕️ กลางจอ</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row gap6 mt8" id="subSizeRow">
+        <div class="grow">
+          <label class="field-label">🔠 ขนาดซับ <span id="subSizeVal" class="val-chip">กลาง</span></label>
+          <input type="range" id="subSize" min="0.045" max="0.11" step="0.003" value="0.06">
+        </div>
+        <div class="grow">
+          <label class="field-label">🖊️ เส้นขอบ <span id="subOutlineVal" class="val-chip">7</span></label>
+          <input type="range" id="subOutline" min="0" max="12" step="1" value="7">
+        </div>
+      </div>
+      <p class="hint">💬 ซับตัดเป็นการ์ดสั้น 3-4 คำ ขึ้นไล่ตามเสียงพูด ไม่ล้นจอ · ปรับขนาด/เส้นขอบได้</p>
+
+      <div class="toggle-row mt8">
+        <div>
+          <div class="toggle-label">🎵 เพลงพื้นหลัง</div>
+          <div class="toggle-sub">เบาๆ ใต้เสียงพากย์ (auto-duck)</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="bgMusicToggle" checked><span class="track"></span></label>
+      </div>
+      <div id="bgMusicOptions">
+        <div class="indent">
+          <select id="bgMusicMood">
+            <option value="random" selected>🎲 สุ่มเพลง (สุ่มใหม่ทุกคลิป)</option>
+            <option value="upbeat">🥁 Upbeat สดใส</option>
+            <option value="happy">😊 Happy แฮปปี้</option>
+            <option value="cinematic">🎬 Business/Commercial</option>
+            <option value="luxury">✨ Inspiring หรูมีระดับ</option>
+            <option value="chill">🌊 Chill นุ่มๆ</option>
+            <option value="calm">🕊️ Calm สงบ</option>
+          </select>
+          <span class="hint m0" id="bgMusicVolLabel" style="width:34px; text-align:right;">18%</span>
+          <input type="range" id="bgMusicVolume" min="5" max="40" value="18" title="ความดังเพลง" style="flex:1;">
+        </div>
+        <div class="row gap6" style="margin: 6px 0 0 4px;">
+          <button class="btn btn-ghost" id="uploadMusicBtn" style="padding:7px 12px; font-size:11px;">📁 ใช้เพลงเอง</button>
+          <span class="hint m0" id="customMusicName" style="flex:1;"></span>
+          <input type="file" id="musicFileInput" accept="audio/*,.mp3" hidden>
+        </div>
+        <p class="hint" style="margin-left:4px;">💡 มีเพลงฟรีลิขสิทธิ์ในตัว 6 เพลง · หรืออัปโหลดเพลงของคุณเอง</p>
+      </div>
+
+      <div class="toggle-row mt8">
+        <div>
+          <div class="toggle-label">🔔 เสียงเอฟเฟกต์ตอนซับขึ้น</div>
+          <div class="toggle-sub">เสียง click/pop เด้งตามคำที่ขึ้น</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="sfxToggle"><span class="track"></span></label>
+      </div>
+      <div id="sfxOptions" class="indent" style="display:none;">
+        <select id="sfxSound">
+          <option value="pop1" selected>🫧 Pop 1</option>
+          <option value="pop2">🫧 Pop 2</option>
+          <option value="click1">👆 Click 1</option>
+          <option value="click2">👆 Click 2</option>
+          <option value="keyboard">⌨️ คีย์บอร์ด</option>
+        </select>
+        <span class="hint m0" id="sfxVolLabel" style="width:34px; text-align:right;">50%</span>
+        <input type="range" id="sfxVolume" min="10" max="100" value="50" title="ความดังเอฟเฟกต์" style="flex:1;">
+      </div>
+
+      <div class="toggle-row mt8">
+        <div>
+          <div class="toggle-label">✂️ ตัดช่วงเงียบอัตโนมัติ</div>
+          <div class="toggle-sub">จังหวะกระชับแบบโฆษณามือโปร</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="silenceCutToggle" checked><span class="track"></span></label>
+      </div>
+
+      <div class="toggle-row mt8">
+        <div>
+          <div class="toggle-label">✍️ กราฟิกลายมือ (Handwritten Overlay)</div>
+          <div class="toggle-sub">ต่อท้ายทุกพรอมต์วิดีโอ · ลายเส้นขาว/เขียนไทย write-on/ลูกศร-วงกลมไฮไลต์สินค้า — ไม่ติ๊กก็ไม่ใช้</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="hwOverlayToggle"><span class="track"></span></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ ⑤ รัน ════════ -->
+  <section class="card">
+    <div class="card-head"><span class="step-no">⑤</span><span>รัน</span></div>
+    <div class="card-body">
+      <label class="field-label">📦 ทำเสร็จแล้วให้ทำอะไร</label>
+      <select id="outputMode">
+        <option value="save" selected>💾 เซฟลงเครื่องอย่างเดียว</option>
+        <option value="post">📤 โพส TikTok + ปักตะกร้าอัตโนมัติ (เบต้า)</option>
+        <option value="post_save">📤💾 โพส TikTok + เซฟลงเครื่องด้วย (เบต้า)</option>
+        <option value="review" disabled>🧪 ตรวจคลิปก่อนโพส (เร็วๆ นี้)</option>
+      </select>
+
+      <!-- v0.4: ตัวเลือกโพส TikTok (โชว์เมื่อเลือกโหมดโพส) -->
+      <div id="postOptions" class="post-box" style="display:none;">
+        <div class="post-box-title">⚙️ ตั้งค่าการโพส TikTok</div>
+
+        <label class="field-label">📌 วิธีโพส</label>
+        <div class="scene-pool-row">
+          <label class="scene-pool-chip"><input type="radio" name="postType" value="postNow" checked> ⚡ โพสทันที</label>
+          <label class="scene-pool-chip"><input type="radio" name="postType" value="schedule"> 📅 ตั้งเวลา</label>
+          <label class="scene-pool-chip"><input type="radio" name="postType" value="saveDraft"> 💾 ฉบับร่าง</label>
+        </div>
+
+        <!-- ตั้งเวลาโพส (โชว์เมื่อเลือก schedule) -->
+        <div id="scheduleSettings" style="display:none; margin-top:10px;">
+          <label class="field-label">📆 วันที่เริ่มโพส</label>
+          <div class="row gap6">
+            <input type="date" id="schedDate" style="flex:1;">
+            <button type="button" id="schedToday" class="mini-btn">วันนี้</button>
+            <button type="button" id="schedTomorrow" class="mini-btn">พรุ่งนี้</button>
+          </div>
+          <div class="row gap6 mt8">
+            <div class="grow">
+              <label class="field-label">🕐 เวลาเริ่ม</label>
+              <div class="row gap6">
+                <select id="schedHour">
+                  <option value="06">06</option><option value="07">07</option><option value="08">08</option>
+                  <option value="09" selected>09</option><option value="10">10</option><option value="11">11</option>
+                  <option value="12">12</option><option value="13">13</option><option value="14">14</option>
+                  <option value="15">15</option><option value="16">16</option><option value="17">17</option>
+                  <option value="18">18</option><option value="19">19</option><option value="20">20</option>
+                  <option value="21">21</option><option value="22">22</option><option value="23">23</option>
+                </select>
+                <span class="post-colon">:</span>
+                <select id="schedMinute">
+                  <option value="00" selected>00</option><option value="15">15</option>
+                  <option value="30">30</option><option value="45">45</option>
+                </select>
+              </div>
+            </div>
+            <div class="grow">
+              <label class="field-label">⏱️ ห่างกันทุก (นาที)</label>
+              <input type="number" id="schedInterval" value="30" min="15" max="1440">
+            </div>
+          </div>
+          <label class="struct-pool-chip mt8" style="width:fit-content;"><input type="checkbox" id="schedRandom"> 🎲 สุ่มระยะห่างแต่ละคลิป</label>
+          <div id="schedRandomRow" class="row gap6 mt8" style="display:none;">
+            <div class="grow"><label class="field-label">สุ่มต่ำสุด (นาที)</label><input type="number" id="schedRandMin" value="20" min="15" max="1440"></div>
+            <div class="grow"><label class="field-label">สุ่มสูงสุด (นาที)</label><input type="number" id="schedRandMax" value="60" min="15" max="1440"></div>
+          </div>
+          <p class="hint">💡 TikTok ต้องตั้งล่วงหน้าอย่างน้อย 15 นาที · คลิปถัดไปบวกเวลาสะสมให้อัตโนมัติ</p>
+        </div>
+
+        <label class="field-label mt8">🏷️ แฮชแท็กเพิ่มเอง (ไม่บังคับ)</label>
+        <input type="text" id="postHashtags" placeholder="#แฮชแท็ก เว้นวรรค (ว่าง = AI คิดจากสินค้าให้)">
+
+        <label class="struct-pool-chip mt8" style="width:fit-content;"><input type="checkbox" id="postNoCaption"> 🚫 ไม่ใส่แคปชั่น (โพสเปล่า ใส่แค่แฮชแท็ก/ตะกร้า)</label>
+        <label class="struct-pool-chip mt8" style="width:fit-content;"><input type="checkbox" id="aiBasketName"> 🤖 ให้ AI คิดชื่อตะกร้าใหม่ (จากชื่อสินค้า) — ไม่ติ๊ก = ใช้ชื่อสินค้าเดิม</label>
+        <label class="struct-pool-chip mt8" style="width:fit-content;"><input type="checkbox" id="postAIContent" checked> 🤖 ติ๊ก AI-generated content (แนะนำ)</label>
+        <label class="struct-pool-chip mt8" style="width:fit-content;"><input type="checkbox" id="postDisclose"> 📢 เปิดเผยเนื้อหาโปรโมต (Branded)</label>
+        <div id="discloseOptions" class="scene-pool-row mt8" style="display:none; margin-left:6px;">
+          <label class="scene-pool-chip"><input type="radio" name="discloseType" value="your_brand" checked> แบรนด์ตัวเอง</label>
+          <label class="scene-pool-chip"><input type="radio" name="discloseType" value="branded_content"> แบรนด์อื่น</label>
+        </div>
+      </div>
+
+      <div class="row gap6 mt8">
+        <div class="grow">
+          <label class="field-label">🔁 วนซ้ำ</label>
+          <select id="loopCount">
+            <option value="1" selected>1 รอบ</option>
+            <option value="2">2 รอบ</option>
+            <option value="3">3 รอบ</option>
+            <option value="5">5 รอบ</option>
+            <option value="999">♾️ ไม่จำกัด</option>
+          </select>
+        </div>
+        <div class="grow">
+          <label class="field-label">⏸️ พักระหว่างชุด <span class="val-chip">กัน 403</span></label>
+          <select id="setDelay">
+            <option value="30">30 วิ</option>
+            <option value="120">2 นาที</option>
+            <option value="240" selected>4 นาที (แนะนำ — กัน 403)</option>
+            <option value="360">6 นาที</option>
+            <option value="600">10 นาที (เนียนสุด)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Sticky Run Bar ════════ -->
+  <div class="runbar">
+    <div class="summary-chips" id="summaryChips"></div>
+    <button class="btn btn-run" id="startBtn">🚀 เริ่มสร้างโฆษณา</button>
+    <button class="btn btn-stop" id="stopBtn" disabled>⛔ หยุด</button>
+    <div class="progress-wrap" id="progressWrap" style="display:none;">
+      <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText"></div>
+    </div>
+    <div class="log-panel" id="logPanel" style="display:none;">
+      <div class="log-head"><span>📋 Log การทำงาน</span><button class="btn-mini" id="clearLogBtn">ล้าง</button></div>
+      <div class="log-body" id="logBody"></div>
+    </div>
+  </div>
+
+  <!-- ม่านทำงานในแผง -->
+  <div id="runOverlay">
+    <div class="ro-card">
+      <div class="ro-ring"><img src="../assets/logo.png" class="ro-logo" alt=""></div>
+      <div class="ro-title" id="roTitle">กำลังสร้างโฆษณา...</div>
+      <div class="ro-step" id="roStep"></div>
+      <div class="ro-bar"><div class="ro-bar-fill" id="roBar"></div></div>
+      <div class="ro-sub" id="roSub"></div>
+      <button class="ro-stop" id="roStop">⛔ หยุด</button>
+    </div>
+  </div>
+
+  <!-- การ์ดสรุปเมื่อรันเสร็จ -->
+  <div id="summaryOverlay">
+    <div class="sum-card">
+      <div class="sum-emoji" id="sumEmoji">🎉</div>
+      <div class="sum-title" id="sumTitle">เสร็จทั้งหมดแล้ว!</div>
+      <div class="sum-subtitle" id="sumSubtitle">สร้างโฆษณาเรียบร้อย</div>
+      <div class="sum-stats">
+        <div class="sum-stat ok">
+          <div class="sum-stat-num" id="sumDone">0</div>
+          <div class="sum-stat-label">✅ สำเร็จ</div>
+        </div>
+        <div class="sum-stat fail">
+          <div class="sum-stat-num" id="sumFailed">0</div>
+          <div class="sum-stat-label">⚠️ เฟล</div>
+        </div>
+        <div class="sum-stat">
+          <div class="sum-stat-num" id="sumTime">0:00</div>
+          <div class="sum-stat-label">⏱️ เวลา</div>
+        </div>
+      </div>
+      <div class="sum-meta" id="sumMeta"></div>
+      <button class="sum-close" id="sumClose">เยี่ยม! ปิดเลย</button>
+    </div>
+  </div>
+
+  <!-- v0.6.3: ปุ่ม FAB คลิปสอนใช้งาน+ติดตั้ง (มุมขวาล่าง) — คนใหม่กดดูได้เลย แบบ PD Auto VIP -->
+  <style>
+    @keyframes pdFabPulse{0%,100%{box-shadow:0 2px 8px rgba(220,38,38,0.35)}50%{box-shadow:0 2px 16px rgba(220,38,38,0.62)}}
+    @keyframes pdFabBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+    #pdTutorialFab{position:fixed;bottom:18px;right:14px;z-index:9000;display:flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:999px;background:rgba(15,17,27,0.94);border:1px solid rgba(255,255,255,0.16);text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,0.45);animation:pdFabPulse 3s ease-in-out infinite,pdFabBounce 4s ease-in-out infinite;transition:transform .2s,border-color .2s;}
+    #pdTutorialFab:hover{transform:scale(1.07);border-color:rgba(255,255,255,0.36);animation:none;}
+    #pdTutorialFab .pf-ico{font-size:14px;}
+    #pdTutorialFab .pf-txt{color:#e2e8f0;font-size:11px;font-weight:700;white-space:nowrap;}
+    /* v0.6.3: จุดแดงกระพริบบนปุ่มเฟือง ⚙️ เมื่อมีเวอร์ชันใหม่ */
+    #settingsBtn.has-update{position:relative;}
+    #settingsBtn.has-update::after{content:'';position:absolute;top:1px;right:1px;width:9px;height:9px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 2px rgba(0,0,0,0.55);animation:pdFabPulse 1.6s ease-in-out infinite;}
+  </style>
+  <a id="pdTutorialFab" href="https://youtu.be/XB8S_nqZ5ws" target="_blank" rel="noopener" title="คลิปสอนใช้งาน + วิธีติดตั้ง">
+    <span class="pf-ico">🎓</span>
+    <span class="pf-txt">คลิปสอนใช้งาน</span>
+  </a>
+
+  <script src="license.js"></script>
+  <script src="../lib/ffmpeg/ffmpeg-umd.js"></script>
+  <script src="../lib/ffmpeg/ffmpeg-util-umd.js"></script>
+  <script src="ai.js"></script>
+  <script src="tts.js"></script>
+  <script src="engine.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
