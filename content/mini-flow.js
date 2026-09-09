@@ -72,6 +72,29 @@
     } catch (_) {}
   }
 
+  /* 🎨 โมเดลที่ผู้ใช้เลือกในบอท → ชื่อที่ Flow รู้จัก (ตารางเดียวกับ PD App)
+     ⚠️ ก่อนหน้านี้ mini-flow ฝัง GEM_PIX_2 ไว้ตายตัว + ไม่ส่งโมเดลวิดีโอเลย
+     = ผู้ใช้เลือกโมเดลอะไรก็ได้อย่างเดียว (owner 2026-09-09) */
+  const IMG_MODEL = { nano_banana_2: 'NARWHAL', nano_banana_pro: 'GEM_PIX_2', imagen_4: 'IMAGEN_4' };
+  const I2V_MODEL = {
+    veo_lite_lower: 'veo_3_1_i2v_lite_low_priority',   // ฟรี 0 เครดิต
+    veo_lite: 'veo_3_1_i2v_lite',
+    veo_fast: 'veo_3_1_i2v_s_fast_portrait_ultra',
+    omni_flash_4s: 'abra_i2v_4s',
+    omni_flash_6s: 'abra_i2v_6s',
+    omni_flash: 'abra_i2v_8s',
+    omni_flash_10s: 'abra_i2v_10s',
+  };
+  //   Omni Flash เลือกจำนวนวินาทีได้ (4/6/8/10) → แปลงเป็นคีย์ย่อยก่อน
+  function pdVideoModelKey(req) {
+    let k = (req && req.videoModel) || 'veo_lite_lower';
+    if (k === 'omni_flash') {
+      const sec = parseInt((req && req.maxClipSec) || 8, 10);
+      k = sec === 10 ? 'omni_flash_10s' : sec === 6 ? 'omni_flash_6s' : sec === 4 ? 'omni_flash_4s' : 'omni_flash';
+    }
+    return I2V_MODEL[k] || I2V_MODEL.veo_lite_lower;
+  }
+
   const ASPECT_IMG = { '9:16': 'IMAGE_ASPECT_RATIO_PORTRAIT', '16:9': 'IMAGE_ASPECT_RATIO_LANDSCAPE', '1:1': 'IMAGE_ASPECT_RATIO_SQUARE' };
   const ASPECT_VID = { '9:16': 'VIDEO_ASPECT_RATIO_PORTRAIT', '16:9': 'VIDEO_ASPECT_RATIO_LANDSCAPE', '1:1': 'VIDEO_ASPECT_RATIO_SQUARE' };
 
@@ -183,7 +206,7 @@
       sessionId: ctx.sessionId,
       prompt: imgPrompt,
       refUUIDs: refUUIDs,
-      imageModelName: 'GEM_PIX_2', // Nano Banana Pro (ฟรี + คม + รองรับ ref ดี)
+      imageModelName: ctx.imageModelName || 'GEM_PIX_2',   // 🎨 ตามที่ผู้ใช้เลือก (default = Nano Banana Pro)
       aspectRatio: aspectImg,
     });
     const imgMedia = imgRes.media && imgRes.media[0];
@@ -196,6 +219,7 @@
       prompt: scene.videoPrompt, // ฟุตเทจ ไม่มีคนพูด (lock ใน prompt แล้ว)
       imageMediaId: imgMedia.name,
       aspectRatio: aspectVid,
+      videoModelKey: ctx.videoModelKey,   // 🎬 โมเดลวิดีโอ + ความยาวตามที่ผู้ใช้เลือก
     });
     const vidMedia = vidRes.media && vidRes.media[0];
     if (!vidMedia || !vidMedia.name) throw new Error('ฉาก ' + (sceneIdx + 1) + ': animate ไม่สำเร็จ');
@@ -297,7 +321,12 @@
 
     progress('เตรียมโปรเจค Flow...');
     const proj = await callFlowAPI('createProject');
-    const ctx = { projectId: proj.projectId, sessionId: proj.agentSessionId, aspect: req.aspect };
+    const ctx = {
+      projectId: proj.projectId, sessionId: proj.agentSessionId, aspect: req.aspect,
+      //   🎨🎬 โมเดลที่ผู้ใช้เลือก — เก็บไว้ใน ctx เพราะตัวเจนรายฉากไม่เห็น req
+      imageModelName: IMG_MODEL[req && req.imageModel] || 'GEM_PIX_2',
+      videoModelKey: pdVideoModelKey(req),
+    };
     // ปิด Flow Agent panel (กัน UI เพี้ยน — ของจริงไม่กระทบ API แต่กันเหนียว)
     try { await callFlowAPI('setAgentToggle', proj.projectId, false); } catch (e) {}
 
