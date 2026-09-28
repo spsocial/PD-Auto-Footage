@@ -78,6 +78,18 @@
     if (!window.grecaptcha || !window.grecaptcha.enterprise) {
       throw new Error('grecaptcha.enterprise not ready');
     }
+    //   🔓 ใช้ execute "ตัวจริง" ถ้าคว้าไว้ได้ (flow-api-new.js คว้าไว้ตั้งแต่ต้นหน้า)
+    //      Flow เอา wrapper มาทับ execute แล้วบังคับ action = extension_hijack_detected → โทเคนโดนตีตรา
+    try {
+      var _rc = window.__pdRc;
+      if (_rc && typeof _rc.real === 'function') {
+        var _real = _rc.real();
+        if (_real) return _real(SITEKEY, { action });
+        if (_rc.isTrap && _rc.isTrap(window.grecaptcha.enterprise.execute)) {
+          throw new Error('Flow ดักจับ reCAPTCHA ไว้ (โหลดหน้า Flow ไม่ทัน) — ปิดแท็บ Flow แล้วสั่งงานใหม่อีกครั้ง');
+        }
+      }
+    } catch (e) { if (/ดักจับ reCAPTCHA/.test(String(e && e.message))) throw e; }
     return window.grecaptcha.enterprise.execute(SITEKEY, { action });
   }
 

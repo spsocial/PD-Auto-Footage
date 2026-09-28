@@ -41,7 +41,7 @@
 
   /* 🖱️ คลิกแบบคนจริง — ยกจังหวะจาก Merge เดิม (เลื่อนเมาส์จริงผ่าน CDP + ลังเลก่อนกด)
      ⚠️ ต้องกด "ปุ่มชั้นใน" ของ Angular Material — กดที่ตัวครอบ (flow-menu-item) ไม่ติด (เทสจริงแล้ว) */
-  async function humanClick(el, label) {
+  async function humanClick(el, label, opts) {
     if (!el) throw new Error('ไม่เจอปุ่ม' + (label ? ' (' + label + ')' : ''));
     if (el.disabled) throw new Error('ปุ่มถูกปิดใช้งาน' + (label ? ' (' + label + ')' : ''));
     try { el.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (_) {}
@@ -54,9 +54,35 @@
     try { chrome.runtime.sendMessage({ __pdCdpMove: true, x: Math.round(cx), y: Math.round(cy) }); } catch (_) {}
     await sleep(rand(180, 420)); // ลังเลก่อนกด (แบบ VIP)
     const o = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy, button: 0, buttons: 1, pointerId: 1, pointerType: 'mouse', isPrimary: true, detail: 1 };
+    /* 📸 ถ่ายสภาพก่อนคลิก — ไว้เทียบว่าคลิกแล้วมีอะไรเปลี่ยนไหม */
+    const _snap = () => {
+      try {
+        return [
+          $$('.cdk-overlay-pane').length,                 // เมนู/แผงเปิด-ปิด
+          el.isConnected ? 1 : 0,                         // ปุ่มหายไป
+          el.getAttribute && el.getAttribute('aria-checked'),
+          el.getAttribute && el.getAttribute('aria-expanded'),
+          el.getAttribute && el.getAttribute('aria-selected'),
+          el.disabled ? 1 : 0,
+        ].join('|');
+      } catch (_) { return ''; }
+    };
+    const _b4 = _snap();
     ['pointerover', 'pointerenter', 'pointermove', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']
       .forEach((ev) => el.dispatchEvent(ev.startsWith('pointer') ? new PointerEvent(ev, o) : new MouseEvent(ev, o)));
     await sleep(rand(250, 600));
+    /* 🖱️ คลิกข้างบนเป็น dispatchEvent (isTrusted=false)
+       🔴 ยืนยันแล้ว 2026-09-22 จาก log จริง: Flow ย้ายหน้าเว็บไป Angular Material
+          → ไม่รับคลิกปลอมอีกต่อไป (ปุ่มโฟกัสแต่ไม่ทำงาน)
+       → ไม่มีอะไรเปลี่ยนเลย = ยิงคลิกจริงระดับ OS (chrome.debugger — มี cdpClickAt ใน service-worker อยู่แล้ว)
+       ⚠️ ปุ่มที่คลิกแล้วไม่มีอะไรเปลี่ยนโดยธรรมชาติ (เช่นเปิดกล่องเลือกไฟล์) → ส่ง skipReal:true */
+    if (opts && opts.skipReal) return;
+    if (_snap() !== _b4) return;                          // มีอะไรเปลี่ยน = คลิกติดแล้ว
+    try {
+      say('   🖱️ "' + (label || 'ปุ่ม') + '" คลิกธรรมดาไม่มีผล → คลิกจริงระดับ OS', 'warn');
+      chrome.runtime.sendMessage({ action: 'cdpClick', x: Math.round(cx), y: Math.round(cy) });
+      await sleep(rand(400, 700));
+    } catch (_) { /* ส่งไม่ได้ = ใช้ผลจากคลิกแรก */ }
   }
 
   /* 🌏 ยึด "ชื่อไอคอน" ไม่ใช่ข้อความ (owner ทัก 2026-09-09: Flow ของเขาเป็นภาษาไทย)
@@ -150,7 +176,52 @@
       : list.find((b) => match.test(norm(b)));
     if (!el) { say('   ⚠️ ไม่เจอตัวเลือก ' + label + ' (ข้ามไปใช้ค่าเดิม)', 'warn'); return false; }
     if (el.getAttribute('aria-checked') === 'true') return true; // ตรงอยู่แล้ว ไม่ต้องกด
-    await humanClick(el, label);
+    await humanClick(el, label, { skipReal: true });   // มีตัวเช็ค aria-checked + ถอยเองข้างล่างแล้ว
+    /* 🖱️ ตัวเลือกต้อง "ติดจริง" ไม่ใช่แค่สั่งคลิกไป (owner 2026-09-22)
+       humanClick เป็น dispatchEvent ปลอม — Angular Material อาจไม่รับ
+       → เช็ค aria-checked ซ้ำ · ไม่ติด = คลิกจริงระดับ OS
+       (กันอาการ "ตั้ง 720p/8 วิ/โหมด ไม่ติด" แบบเงียบ ๆ) */
+    for (let i = 0; i < 4; i++) {
+      await sleep(250);
+      if (el.getAttribute('aria-checked') === 'true' || !el.isConnected) return true;
+    }
+    try {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0) {
+        say('   🖱️ "' + label + '" คลิกธรรมดาไม่ติด → คลิกจริงระดับ OS', 'warn');
+        chrome.runtime.sendMessage({ action: 'cdpClick', x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) });
+        await sleep(700);
+      }
+    } catch (_) { /* ส่งไม่ได้ = ใช้ผลจากคลิกแรก */ }
+    return true;
+  }
+  /* ⏱️ เลือก "ความยาวคลิป" — ต้องหาแบบ "ดูตัวเลข" ไม่ใช่เทียบข้อความ
+     🐞 บั๊กจริง (owner เทสเอง): โครมภาษาไทยเลือก 10 วิ ไม่ติด · โครมอังกฤษปกติ
+     ต้นเหตุ: **Flow แปลป้ายความยาวตามภาษา**
+        อังกฤษ : 4s · 6s · 8s · 10s
+        ไทย    : "4 วินาที" · "6 วินาที" · "8 วินาที" · "10 วินาที"
+     ของเดิมใช้ /^10s$/ → ไทยไม่ match เลยสักตัว → ตกไปใช้ค่าเดิมของโปรเจ็ค (8 วิ) เงียบ ๆ
+     ⚠️ ที่ไม่มีใครเห็นมาก่อนเพราะ 8 วิ เป็นค่าเริ่มต้นอยู่แล้ว — เลือก 8 ก็ "เหมือนติด"
+     ✅ ป้ายอื่นปลอดภัย: 720p/360p · x1-x4 · สัดส่วน/โหมด = ใช้ icon ไม่ใช่ข้อความ
+        และภาษาไทยของ Google ใช้เลขอารบิก (4/6/8/10) ไม่ใช่เลขไทย
+     กฎการจับ: ขึ้นต้นด้วยตัวเลข + ตามด้วยหน่วยเวลา (s / วิ / วินาที / sec) และต้องไม่ใช่ "720p" */
+  const durOfLabel = (x) => {
+    const m = String(x || '').trim().match(/^(\d+)\s*(?!p\b)(?:s\b|วิ|วินาที|sec)/i);
+    return m ? parseInt(m[1], 10) : null;
+  };
+  async function pickDuration(want) {
+    const n = parseInt(want, 10);
+    if (!n) return false;
+    const list = $$('.cdk-overlay-pane [role=radio]');
+    const el = list.find((b) => durOfLabel(norm(b)) === n);
+    if (!el) {
+      //   ไม่เจอจริงๆ = โมเดลนั้นไม่มีความยาวนี้ (เช่น Veo Lite ไม่มี 10 วิ) — บอกให้ชัดว่าเป็นเพราะอะไร
+      const have = list.map((b) => durOfLabel(norm(b))).filter((x) => x != null);
+      say('   ⚠️ ไม่เจอตัวเลือก ' + n + ' วิ (ข้ามไปใช้ค่าเดิม)' + (have.length ? ' · โมเดลนี้มีให้เลือก: ' + have.join('/') + ' วิ' : ''), 'warn');
+      return false;
+    }
+    if (el.getAttribute('aria-checked') === 'true') return true;
+    await humanClick(el, n + ' วิ');
     return true;
   }
   /* 🎬 เลือกโมเดลวิดีโอ (owner 2026-09-09: "คลิปแรกเลือกโมเดล 0 เครดิตแล้ว ทำไมบอกต่อฉากไม่ได้")
@@ -223,15 +294,61 @@
       const icon = MODE_ICON[cfg.mode] || String(cfg.mode).toLowerCase();
       const has = $$('.cdk-overlay-pane [role=radio]').some((b) => hasIcon(b, icon));
       if (has) await pickRadio(icon, 'โหมด ' + cfg.mode);
-      else say('   ℹ️ อยู่โหมด ' + cfg.mode + ' อยู่แล้ว (เมนูไม่มีให้สลับ)');
+      else {
+        /* 🔴 ห้ามสมมุติว่า "เมนูไม่มีตัวเลือก = อยู่โหมดนั้นแล้ว" (2026-09-22)
+           เคสจริง: ขึ้น "อยู่โหมด Ingredients อยู่แล้ว" แต่ป้ายตั้งค่าโชว์ "🍌 Nano Banana 2 x1" = โหมดภาพ
+           → หาโมเดลวิดีโอไม่เจอ · ตั้ง 720p/ความยาว ไม่ติด · แต่กด Generate ต่อ → Flow สร้าง "รูป"
+             เรานั่งรอวิดีโอจนหมดเวลา = งานเฟลโดยไม่รู้สาเหตุ
+           → อ่านป้ายจริงแทน · ถ้าเป็นโมเดลภาพแต่เราจะทำวิดีโอ = กด videocam สลับเอง */
+        const _cur = currentSettings();
+        const _wantVideo = /Video|Frames|Ingredients/i.test(String(cfg.mode));
+        const _looksImage = /nano banana|imagen|\bx[1-9]\b/i.test(_cur) && !/video|วิดีโอ|\d+\s*(?:s\b|วิ)/i.test(_cur);
+        if (_wantVideo && _looksImage) {
+          say('   ⚠️ เมนูไม่มีโหมด ' + cfg.mode + ' แต่ป้ายบอกว่าอยู่โหมดภาพ: "' + _cur + '" → สลับเป็นวิดีโอก่อน', 'warn');
+          const okV = await pickRadio('videocam', 'โหมดวิดีโอ').catch(() => false);
+          if (!okV) say('   ⛔ สลับเป็นโหมดวิดีโอไม่สำเร็จ — งานนี้จะได้รูปแทนคลิป', 'warn');
+          else { await sleep(600); say('   ✅ สลับเป็นโหมดวิดีโอแล้ว (ค่าใหม่: "' + currentSettings() + '")'); }
+        } else say('   ℹ️ อยู่โหมด ' + cfg.mode + ' อยู่แล้ว (เมนูไม่มีให้สลับ · ป้าย: "' + _cur + '")');
+      }
     }
     if (cfg.aspect) await pickRadio(cfg.aspect === '9:16' ? 'crop_9_16' : 'crop_16_9', 'สัดส่วน ' + cfg.aspect);
     if (cfg.imageModel) { const re = imgModelRe(cfg.imageModel); if (re) await pickModelFamily(re, cfg.imageModel); }
-    if (cfg.videoModel) { const re = modelRe(cfg.videoModel); if (re) await pickModelFamily(re, cfg.videoModel); }
+    if (cfg.videoModel) {
+      const re = modelRe(cfg.videoModel);
+      /* ⏳ เปลี่ยนโมเดลแล้วต้องรอ Flow วาดแถวตัวเลือกใหม่ก่อน (owner เจอจริงใน log)
+           "⚠️ ไม่เจอตัวเลือก 10 วิ (ข้ามไปใช้ค่าเดิม)" ทั้งที่เลือก Omni ซึ่งมี 10s จริง
+         เพราะแต่ละโมเดลมีตัวเลือกไม่เท่ากัน แล้ว Angular วาดใหม่ไม่ทัน:
+           Omni 1.1 Flash          -> 360p/720p · 4s/6s/8s/10s
+           Veo 3.1 Lite [Lower]    -> ไม่มีแถวความละเอียด · 4s/6s/8s (ไม่มี 10s)
+         ไม่รอ = อ่านแถวเก่าของโมเดลก่อนหน้า -> ตั้งความยาว/ความละเอียดไม่ติด เงียบ ๆ */
+      if (re && await pickModelFamily(re, cfg.videoModel)) await sleep(700);
+    }
     if (cfg.resolution) await pickRadio(new RegExp('^' + cfg.resolution, 'i'), cfg.resolution);      // 720p/360p ไม่แปล
-    if (cfg.duration) await pickRadio(new RegExp('^' + cfg.duration + 's$', 'i'), cfg.duration + ' วิ'); // 8s ไม่แปล
+    if (cfg.duration) await pickDuration(cfg.duration);   // ⏱️ จับด้วยตัวเลข (ไทย/อังกฤษได้หมด)
     if (cfg.count) await pickRadio(new RegExp('^x' + cfg.count + '$', 'i'), 'จำนวน x' + cfg.count);      // x1 ไม่แปล
     await closeOverlay();
+    verifySettings(cfg);
+  }
+
+  /* 🧪 ด่านตรวจซ้ำ "ตั้งค่าติดจริงไหม"
+     อ่านค่าที่ Flow โชว์อยู่จริงบนปุ่มสรุป แล้วเทียบกับที่เราสั่งไป
+       อังกฤษ: "Video · 720p · 8s crop_9_16 x1"
+       ไทย   : "วิดีโอ · 720p · 8 วินาที crop_9_16 x1"
+     ทำไมต้องมี: ที่ผ่านมา "ตั้งไม่ติด" มันเงียบสนิท — เลือก 10 วิ แล้วได้ 8 วิ โดยไม่มีอะไรฟ้อง
+       (บั๊กโครมไทยซ่อนตัวอยู่ได้นานเพราะ 8 วิ เป็นค่า default พอดี)
+     ⚠️ เตือนอย่างเดียว ไม่ throw — ได้คลิปที่ความยาวไม่ตรงยังดีกว่าไม่ได้คลิปเลย */
+  function verifySettings(cfg) {
+    try {
+      const cur = currentSettings();
+      if (!cur) return;
+      const gotDur = (String(cur).match(/(\d+)\s*(?:s\b|วิ|วินาที|sec)/i) || [])[1];
+      if (cfg.duration && gotDur && parseInt(gotDur, 10) !== parseInt(cfg.duration, 10)) {
+        say('   ⚠️ ตั้งความยาวไม่ติด — สั่ง ' + cfg.duration + ' วิ แต่ Flow ยังเป็น ' + gotDur + ' วิ (ค่าที่ Flow โชว์: "' + cur + '")', 'warn');
+      }
+      if (cfg.resolution && !new RegExp('\\b' + cfg.resolution, 'i').test(cur)) {
+        say('   ⚠️ ตั้งความละเอียดไม่ติด — สั่ง ' + cfg.resolution + ' (ค่าที่ Flow โชว์: "' + cur + '")', 'warn');
+      }
+    } catch (_) { /* ตรวจไม่ได้ = ข้าม ห้ามทำให้งานล้ม */ }
   }
   // อ่านค่าที่ตั้งอยู่ตอนนี้ (ปุ่มโชว์สรุป เช่น "Video · 720p · 8s crop_16_9 x1")
   const currentSettings = () => norm($$('button').find((b) => /settings-trigg/.test(String(b.className))) || {});
@@ -276,7 +393,29 @@
   async function generate() {
     const g = await waitFor(() => { const b = genBtn(); return (b && !b.disabled) ? b : null; }, 15000, 500);
     if (!g) { dumpCandidates('ปุ่มเจน (arrow_forward)', $$('button')); throw new Error('ปุ่มเจนยังกดไม่ได้ (พ้อมว่าง หรือหน้าไม่พร้อม)'); }
-    await humanClick(g, 'Start generation');
+    const _pb0 = norm(promptBox() || {});
+    await humanClick(g, 'Start generation', { skipReal: true });   // มีตัวเช็คสัญญาณ + ถอยเองข้างล่าง (กันเจน 2 รอบ)
+    /* 🖱️ humanClick ขยับเคอร์เซอร์จริง แต่ตัว "คลิก" เป็น dispatchEvent ของปลอม
+       Flow ย้ายหน้าเว็บไป Angular Material แล้วไม่รับคลิกปลอม (ยืนยันจาก log จริง 2026-09-22)
+       ⚠️ ห้ามปล่อยให้ humanClick ถอยเอง — ถ้าคลิกแรกติดแต่หน้าเว็บตอบช้า
+          จะโดนคลิกจริงซ้ำ = เจน 2 รอบ เสียเครดิต 2 เท่า
+       → รอสัญญาณให้ชัดก่อน (สูงสุด 3 วิ) ไม่มีค่อยคลิกจริง · log บอกเองว่าท่าไหนทำให้ติด */
+    let _sig = false;
+    for (let i = 0; i < 6; i++) {
+      await sleep(500);
+      if (g.disabled || g.getAttribute('aria-disabled') === 'true' || !g.isConnected) { _sig = true; break; }
+      if (_pb0.length > 10 && norm(promptBox() || {}).length < 5) { _sig = true; break; }   // พ้อมถูกล้าง = ส่งแล้ว
+    }
+    if (_sig) { say('   ✅ กด Generate ติดด้วยคลิกธรรมดา'); return; }
+    const _r = g.getBoundingClientRect();
+    say('   🖱️ คลิกธรรมดาไม่มีสัญญาณ → คลิกจริงระดับ OS (CDP)...', 'warn');
+    try { chrome.runtime.sendMessage({ action: 'cdpClick', x: Math.round(_r.x + _r.width / 2), y: Math.round(_r.y + _r.height / 2) }); } catch (_) {}
+    for (let i = 0; i < 6; i++) {
+      await sleep(500);
+      if (g.disabled || g.getAttribute('aria-disabled') === 'true' || !g.isConnected
+        || (_pb0.length > 10 && norm(promptBox() || {}).length < 5)) { say('   ✅ กด Generate ติดด้วยคลิกจริง (CDP)'); return; }
+    }
+    say('   ⚠️ คลิกครบทั้ง 2 ท่าแล้วยังไม่มีสัญญาณเจน — ส่ง log นี้ให้ผู้ดูแล', 'warn');
   }
 
   // ---------- ④ การ์ดสื่อ ----------
@@ -651,7 +790,7 @@
       if (inp) return inp;
       // เมนูอาจมีรายการ "Upload" ให้กดอีกชั้น
       const up = overlayItem(/upload|เพิ่ม|จากเครื่อง/i);
-      if (up) { await humanClick(up, 'Upload'); inp = await waitFor(() => document.querySelector('input[type="file"]'), 6000, 300); }
+      if (up) { await humanClick(up, 'Upload', { skipReal: true }); inp = await waitFor(() => document.querySelector('input[type="file"]'), 6000, 300); }
     }
     return inp;
   }
@@ -703,7 +842,7 @@
     const upBtn = byIcon($$('.cdk-overlay-pane button'), 'upload');
     if (!upBtn) { dumpCandidates('ปุ่มอัปโหลดสื่อในเมนู', $$('.cdk-overlay-pane button')); await closeOverlay(); return 0; }
     const before = $$('flow-add-menu-asset-item').length;
-    await humanClick(upBtn, 'อัปโหลดสื่อ');
+    await humanClick(upBtn, 'อัปโหลดสื่อ', { skipReal: true });
     const inp = await waitFor(() => document.querySelector('input[type="file"]'), 8000, 300);
     if (!inp) { say('   ⚠️ กดอัปโหลดแล้วไม่เจอช่องเลือกไฟล์', 'warn'); await closeOverlay(); return 0; }
     const dt = new DataTransfer();
