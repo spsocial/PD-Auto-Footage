@@ -296,10 +296,14 @@
     } catch (_) {}
     return 'MEDIA_GENERATION_STATUS_UNKNOWN';
   }
+  function isVideoRec(r) { return Array.isArray(r) && typeof r[0] === 'string' && typeof r[1] === 'string' && (r[3] === 'CAE' || Array.isArray(r[5])); }
   function videoRecords(payload) {
     // jwpduf: [null, credits, [rec, rec...]] · eb1hJf: [null, credits, [[mediaId..]], [rec...]] · as29s: rec เดี่ยว
     if (!Array.isArray(payload)) return [];
-    if (typeof payload[0] === 'string' && payload[3] === 'CAE') return [payload];
+    //   🩹 2026-10-05 (ลูกค้า VIP: เจนคลิปเสร็จแต่ "getMedia: ไม่พบ <id>"): เดิมจับ record เดี่ยวด้วย payload[3] === 'CAE'
+    //   ตายตัว — รหัสช่องนี้เปลี่ยนเมื่อไหร่ as29s ใช้ไม่ได้ทันที → ดูจากโครงแทน (opId, projectId เป็น string + ช่องข้อมูล [5] เป็นลิสต์)
+    if (isVideoRec(payload)) return [payload];
+    if (isVideoRec(payload[0])) return payload.filter(isVideoRec);
     var list = Array.isArray(payload[3]) ? payload[3] : (Array.isArray(payload[2]) ? payload[2] : []);
     return list.filter(function (r) { return Array.isArray(r) && typeof r[0] === 'string'; });
   }
@@ -444,10 +448,28 @@
 
     // ดึง media รายตัว (as29s): [id] → record (มี URL ภาพ + URL วิดีโอ signed CDN เมื่อเสร็จ)
     getMedia: async function (id) {
-      var p = await callRpc('as29s', [id]);
-      var recs = videoRecords(p).map(recordToMedia);
-      if (!recs.length) throw new Error('getMedia: ไม่พบ ' + id);
-      return recs[0];
+      //   🩹 2026-10-05: คลิปเสร็จแล้ว (poll ผ่าน) แต่ as29s ไม่คืน record → ลอง 3 ทางก่อนยอมแพ้
+      //   ① as29s ด้วย id เดิม (ลองซ้ำ 3 รอบ — เพิ่งเสร็จใหม่ ๆ บางทียังไม่พร้อม) ② as29s ด้วย mediaId ที่จำไว้
+      //   ③ jwpduf (ตัวเดียวกับที่ poll ผ่านมาแล้ว) — มี URL ไฟล์ในตัวเมื่อเสร็จ
+      var lastP = null, ids = [id];
+      if (_opMedia[id] && _opMedia[id] !== id) ids.push(_opMedia[id]);
+      for (var k = 0; k < ids.length; k++) {
+        for (var a = 0; a < (k === 0 ? 3 : 1); a++) {
+          try {
+            var p = await callRpc('as29s', [ids[k]]); lastP = p;
+            var recs = videoRecords(p).map(recordToMedia);
+            if (recs.length && (recs[0].videoUrl || recs[0].imageUrl)) return recs[0];
+          } catch (e) { lastP = String((e && e.message) || e); }
+          await sleep(1500);
+        }
+      }
+      try {
+        var j = await API.pollVideoStatus({ mediaId: id });
+        var hit = (j.media || []).filter(function (m) { return m.videoUrl || m.imageUrl; })[0];
+        if (hit) return hit;
+      } catch (_) {}
+      var snip = ''; try { snip = (typeof lastP === 'string' ? lastP : JSON.stringify(lastP)).slice(0, 160); } catch (_) {}
+      throw new Error('getMedia: ไม่พบ ' + id + (snip ? ' (' + snip + ')' : ''));
     },
     // URL ไฟล์จริง (แอปเก่าคืน redirect endpoint · แอปใหม่ต้องถาม as29s แล้วคืน signed URL — flow-content await อยู่แล้ว)
     getMediaUrlRedirect: async function (id) {
