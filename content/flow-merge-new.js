@@ -270,7 +270,9 @@
      Merge ไม่เคยตั้งโมเดลภาพเลย ใช้ค่าที่ค้างอยู่ในหน้า Flow มาตลอด */
   const imgModelRe = (key) => {
     const k = String(key || '').toLowerCase();
-    if (/nano_banana_2|banana_2|banana2/.test(k)) return /nano\s*banana\s*2/i;
+    //   🍌 2026-10-07: เมนูไม่มี "Nano Banana 2" แล้ว มีแต่ "2.1" กับ "2 Lite" (Lite อยู่บนกว่า) → เลือก 2.x ที่ไม่ใช่ Lite
+    if (/lite/.test(k)) return /nano\s*banana\s*2\s*lite/i;
+    if (/nano_banana_2|banana_2|banana2/.test(k)) return /nano\s*banana\s*2(\.\d+)?(?!\s*lite)/i;
     if (/nano_banana_pro|banana_pro/.test(k)) return /nano\s*banana\s*pro/i;
     if (/imagen/.test(k)) return /imagen/i;
     return null;

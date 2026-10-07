@@ -640,8 +640,12 @@
   function _unsupported(what) { var e = new Error('แอป Flow ใหม่ (flow.google.com): ' + what + ' ยังไม่รองรับในเวอร์ชันนี้'); e.unsupported = true; return e; }
 
   // เจนภาพหลายใบขนาน (ทีละใบ = 1 rpc · sync) — คืน array เรียงตาม items · ใบเฟล = {error}
+  /* 🍌 ชื่อโมเดลภาพของแอปใหม่ (แกะจาก request จริง ogiZ0b 2026-10-07 · build 20261005 — ซิงก์จาก PD App)
+     Flow ถอด "Nano Banana 2" (NARWHAL) ออกแล้ว · เมนูตอนนี้: Pro = GEM_PIX_2 · 2.1 = BELUGA · 2 Lite = HARBOR_SEAL
+     Imagen 4 ไม่อยู่ในเมนูแล้ว → ส่งไป BELUGA แทน แทนที่จะเฟลทั้งงาน */
+  var NEW_IMG_MODEL = { NARWHAL: 'BELUGA', IMAGEN_4: 'BELUGA', nano_banana_2: 'BELUGA', nano_banana_pro: 'GEM_PIX_2', imagen_4: 'BELUGA', nano_banana_2_lite: 'HARBOR_SEAL' };
   async function _genImages(pid, items, modelName, aspect) {
-    var model = modelName || 'GEM_PIX_2';
+    var model = NEW_IMG_MODEL[modelName] || modelName || 'GEM_PIX_2';
     var asp = imgAspect(aspect);
     var results = await Promise.all(items.map(async function (it, idx) {
       try {
