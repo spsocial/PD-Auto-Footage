@@ -1,8 +1,14 @@
 {
-  "latest": "0.8.6",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.6/PD-Auto-Footage-v0.8.6-protected.zip",
-  "changelog": "🔴 แก้โหมด Express เจนไม่ได้ (สั่งเจนแล้วไม่มีอะไรออกมา ทั้งที่เครดิตยังอยู่) — Google เพิ่งใส่กลไกดักจับส่วนขยายไว้ในเว็บ Flow ทำให้คำสั่งเจนที่ยิงจากบอทถูกตีตราว่า \"ไม่ใช่คนจริง\" แล้วโดนปฏิเสธเงียบ ๆ ส่วนโหมด Merge ใช้ได้ปกติ · แก้: ให้บอทขอสิทธิ์แบบเดียวกับที่หน้าเว็บทำเป๊ะ ๆ → Express กลับมาใช้ได้ตามปกติ · 💡 อัปเดตแล้วให้ปิดแท็บ Flow ที่ค้างอยู่ให้หมดก่อนสั่งงานใหม่ · 🏷️ แยกกรณี \"บัญชี Flow โดน Google พักชั่วคราว\" ออกจาก \"บัญชีไม่มีสิทธิ์\" แล้ว (เมื่อก่อนขึ้นว่าไม่มีสิทธิ์ ทำให้หลายคนนึกว่าต้องไปต่ออายุแพ็กเกจ)",
+  "latest": "0.8.7",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.7/PD-Auto-Footage-v0.8.7-protected.zip",
+  "changelog": "🍌 แก้เจนภาพด้วย Nano Banana 2 ไม่ได้ — Flow ถอดรุ่น Nano Banana 2 ออกแล้ว เปลี่ยนเป็น Nano Banana 2.1 · เลือก Nano Banana 2 = เจนด้วย 2.1 ให้อัตโนมัติ (Express + Merge) · Imagen 4 ถูกถอดจาก Flow เช่นกัน → ใช้ 2.1 แทน · 🩹 Express คลิปเจนเสร็จแต่ขึ้น getMedia: ไม่พบ → บอทลองดึงซ้ำ + ทางสำรองก่อนยอมแพ้ · 💡 อัปเดตแล้วปิดแท็บ Flow ที่ค้างอยู่ก่อนสั่งงานใหม่",
   "versions": [
+    {
+      "version": "0.8.7",
+      "date": "2026-10-07",
+      "changelog": "🍌 แก้เจนภาพด้วย Nano Banana 2 ไม่ได้ — Flow ถอดรุ่น Nano Banana 2 ออกแล้ว เปลี่ยนเป็น Nano Banana 2.1 · เลือก Nano Banana 2 = เจนด้วย 2.1 ให้อัตโนมัติ (Express + Merge) · Imagen 4 ถูกถอดจาก Flow เช่นกัน → ใช้ 2.1 แทน · 🩹 Express คลิปเจนเสร็จแต่ขึ้น getMedia: ไม่พบ → บอทลองดึงซ้ำ + ทางสำรองก่อนยอมแพ้ · 💡 อัปเดตแล้วปิดแท็บ Flow ที่ค้างอยู่ก่อนสั่งงานใหม่",
+      "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.7/PD-Auto-Footage-v0.8.7-protected.zip"
+    },
     {
       "version": "0.8.6",
       "date": "2026-09-28",
@@ -122,5 +128,5 @@
       "note": "เปิดตัว: Merge Mode, ซับ 13 ฟอนต์, การ์ดสรุป, license lock"
     }
   ],
-  "releaseDate": "2026-09-28"
+  "releaseDate": "2026-10-07"
 }
