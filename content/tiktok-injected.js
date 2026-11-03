@@ -59,43 +59,38 @@
     element.dispatchEvent(new MouseEvent('click', opts));
   }
 
-  // Helper: หา dropdown item — v19: match ด้วย .hash-tag-topic text (ไม่ไว้ใจ .focused)
+  // Helper: หา dropdown item — v20: เลือกเฉพาะตัวที่ text "ตรงเป๊ะ" เท่านั้น
+  //   ⚠️ v19 เคยมี fallback หยิบ suggestion ตัวแรกเมื่อไม่เจอตัวตรง — แฮชแท็กไทยที่ไม่มี topic ตรงเป๊ะ
+  //   จะโดนสวมด้วยตัวที่ TikTok ตัดสั้น/normalize = "ตัวอักษรไม่ครบ" (feedback ลูกค้า v0.4.1)
+  //   ตอนนี้: ไม่ตรงเป๊ะ = คืน null → ปล่อยเป็นข้อความ #ชื่อ ธรรมดา (ตัวอักษรครบแน่นอน)
   function findDropdownItem(hashtagName) {
+    const want = hashtagName.toLowerCase();
     // 1: หาจาก .hash-tag-topic ที่ text ตรงกับชื่อ hashtag (แม่นที่สุด)
     const allItems = document.querySelectorAll('.hashtag-suggestion-item[role="option"]');
     for (const item of allItems) {
       const topicEl = item.querySelector('.hash-tag-topic');
-      if (topicEl) {
-        const text = topicEl.textContent.trim().replace(/^#/, '');
-        if (text.toLowerCase() === hashtagName.toLowerCase()) {
-          console.log('[TikTok Injected] v19: Found exact match:', text);
-          return item;
+      if (topicEl && topicEl.textContent.trim().replace(/^#/, '').toLowerCase() === want) {
+        console.log('[TikTok Injected] v20: Found exact match:', topicEl.textContent.trim());
+        return item;
+      }
+    }
+    // 2: DOM เวอร์ชันอื่น (ไม่มีคลาส .hash-tag-topic) — เทียบ textContent ของ option ตรงเป๊ะเท่านั้น
+    const containers = [
+      document.querySelector('[class*="mention-list-popover"]') || document.querySelector('[class*="mentionListPopover"]'),
+      ...document.querySelectorAll('[role="listbox"]'),
+    ].filter(Boolean);
+    for (const box of containers) {
+      for (const opt of box.querySelectorAll('[role="option"]')) {
+        const t = (opt.textContent || '').trim().replace(/^#/, '');
+        // ตัด view count ท้าย (เช่น "ครีมกันแดด1.2M") แล้วเทียบ — ต้องขึ้นต้นตรงเป๊ะ + ที่เหลือเป็นตัวเลข/หน่วยเท่านั้น
+        if (t.toLowerCase() === want || (t.toLowerCase().indexOf(want) === 0 && /^[\d.,]*[KMB]?$/i.test(t.slice(hashtagName.length)))) {
+          console.log('[TikTok Injected] v20: Found exact match (variant DOM):', t);
+          return opt;
         }
       }
     }
-
-    // 2: first hashtag-suggestion-item (fallback — เอาตัวแรกที่ขึ้น)
-    const firstItem = document.querySelector('.hashtag-suggestion-item[role="option"]');
-    if (firstItem) {
-      console.log('[TikTok Injected] v19: Using first suggestion item');
-      return firstItem;
-    }
-
-    // 3: ใน mention-list-popover container
-    const container = document.querySelector('[class*="mention-list-popover"]') ||
-                      document.querySelector('[class*="mentionListPopover"]');
-    if (container) {
-      const item = container.querySelector('[role="option"]');
-      if (item) { console.log('[TikTok Injected] v19: Found via mention-list container'); return item; }
-    }
-
-    // 4: role="listbox" > role="option"
-    const listboxes = document.querySelectorAll('[role="listbox"]');
-    for (const lb of listboxes) {
-      const opt = lb.querySelector('[role="option"]');
-      if (opt) { console.log('[TikTok Injected] v19: Found via listbox>option'); return opt; }
-    }
-
+    const first = document.querySelector('.hashtag-suggestion-item[role="option"] .hash-tag-topic');
+    if (first) console.log('[TikTok Injected] v20: No exact match — first suggestion was:', first.textContent.trim(), '→ keep as plain text');
     return null;
   }
 
@@ -232,10 +227,19 @@
     // ============================================================
     await delay(300);
 
-    const mentionCountAfter = input.querySelectorAll('span.mention, [data-testid="mentionText"]').length;
-    const verified = mentionCountAfter > mentionCountBefore;
+    const mentions = input.querySelectorAll('span.mention, [data-testid="mentionText"]');
+    const mentionCountAfter = mentions.length;
+    let verified = mentionCountAfter > mentionCountBefore;
+    // v20: verify เทียบ "ข้อความ" ของ mention ล่าสุดด้วย ไม่ใช่แค่นับจำนวน — กันแท็กเพี้ยน/โดนตัดผ่านเงียบๆ
+    if (verified) {
+      const lastText = (mentions[mentions.length - 1].textContent || '').trim().replace(/^#/, '');
+      if (lastText && lastText.toLowerCase() !== hashtagName.toLowerCase()) {
+        console.warn('[TikTok Injected] v20: Mention text mismatch! wanted:', hashtagName, 'got:', lastText);
+        verified = false;
+      }
+    }
 
-    console.log('[TikTok Injected] v19: Mentions after:', mentionCountAfter, '| Verified:', verified);
+    console.log('[TikTok Injected] v20: Mentions after:', mentionCountAfter, '| Verified:', verified);
 
     // Space หลัง verified hashtag (TikTok อาจ auto-add แล้ว แต่เผื่อไว้)
     if (verified) {

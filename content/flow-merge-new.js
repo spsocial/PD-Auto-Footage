@@ -313,7 +313,18 @@
         } else say('   ℹ️ อยู่โหมด ' + cfg.mode + ' อยู่แล้ว (เมนูไม่มีให้สลับ · ป้าย: "' + _cur + '")');
       }
     }
-    if (cfg.aspect) await pickRadio(cfg.aspect === '9:16' ? 'crop_9_16' : 'crop_16_9', 'สัดส่วน ' + cfg.aspect);
+    if (cfg.aspect) {
+      /* 📐 2026-11-03 พอร์ตจาก PD App: สัดส่วนต้องติดจริง (เคสจริง: สั่งแนวตั้งได้แนวนอน — โหมดภาพ/วิดีโอใช้สัดส่วนร่วมกัน
+         ตั้งไม่ติด = ค้างค่างานก่อนหน้า) → อ่านป้ายสรุปกลับ ไม่ตรง = ลองซ้ำอีก 2 รอบ แล้วฟ้องใน log */
+      const icon = cfg.aspect === '9:16' ? 'crop_9_16' : 'crop_16_9';
+      for (let t = 0; t < 3; t++) {
+        await pickRadio(icon, 'สัดส่วน ' + cfg.aspect);
+        await sleep(300);
+        if (new RegExp(icon).test(currentSettings())) break;
+        if (t < 2) { say('   🔁 สัดส่วนยังไม่ติด (ป้าย: "' + currentSettings() + '") → ลองใหม่', 'warn'); await sleep(500); }
+        else say('   ⛔ ตั้งสัดส่วน ' + cfg.aspect + ' ไม่ติด — Flow ยังเป็น "' + currentSettings() + '" คลิปอาจออกผิดสัดส่วน', 'warn');
+      }
+    }
     if (cfg.imageModel) { const re = imgModelRe(cfg.imageModel); if (re) await pickModelFamily(re, cfg.imageModel); }
     if (cfg.videoModel) {
       const re = modelRe(cfg.videoModel);

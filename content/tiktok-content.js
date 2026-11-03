@@ -705,9 +705,16 @@ async function setDescription(caption, hashtags, userHashtags = '') {
     }
   }
 
+  // 🧹 หาไม่เจอ = อาจมี popup (ลิขสิทธิ์/tips) บังอยู่ → ปิดแล้วลองหาใหม่ 2 รอบ
+  for (let pa = 0; pa < 2 && !descInput; pa++) {
+    try { await pdTtDismissPopups(); } catch (_) {}
+    await delay(2000);
+    for (const selector of selectors) { const el = document.querySelector(selector); if (el && el.offsetParent !== null) { descInput = el; console.log('[TikTok] Found description input (after closing popups):', selector); break; } }
+  }
+
   if (!descInput) {
     console.error('[TikTok] Description input not found!');
-    throw new Error('ไม่พบช่อง Description');
+    throw new Error('ไม่พบช่อง Description (ปิด popup ที่บังแล้วก็ยังไม่เจอ — หน้า TikTok อาจค้าง ลองเปิดหน้าต่างดู)');
   }
 
   // v16.2: รอให้ TikTok insert filename เสร็จก่อน — poll จนเจอ หรือ timeout
@@ -1063,6 +1070,10 @@ async function setDescription(caption, hashtags, userHashtags = '') {
 // Flow: กด "+ Add" → เลือกสินค้า → กด "Next" (สีแดง) → กรอก Product name (ถ้ามี) → กด "Add" (สีแดง)
 // v5.9.3: เพิ่ม productLinkName สำหรับกรอกใน dialog "Add product links"
 async function addProductLink(productId, productLinkName = '') {
+  // 🛒 2026-11-03 พอร์ตจาก PD App sanitizeBasket: ชื่อตะกร้ามี emoji/สัญลักษณ์ = TikTok แอดตะกร้าไม่ได้ → ตัดทิ้งเสมอ (ทั้ง AI + กรอกเอง) · ยาวไม่เกิน 30
+  productLinkName = String(productLinkName || '')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}\u{200D}\u{20E3}\u{2122}\u{2139}\u{2B50}\u{2B55}]/gu, '')
+    .replace(/\s{2,}/g, ' ').trim().slice(0, 30);
   console.log('[TikTok] Step 3: Add product link, ID:', productId, 'Product Name:', productLinkName || '(ไม่กรอก)');
   updateTikTokOverlay('กำลังเพิ่มสินค้า...', `Product ID: ${productId}`);
 
@@ -1885,6 +1896,29 @@ function findButtonInModal(buttonText) {
 //   ลูกศร = button.DatePicker__nav · เวลา = button.TimePicker__item[aria-label="Hours 14"/"Minutes 35"] · ช่องเวลาโชว์ "14:35"
 //   ⚠️ ปุ่มเปิดปฏิทิน/นาฬิกาเป็นแบบสลับ → คลิกครั้งเดียว (ห้ามคลิกซ้ำ = เปิดแล้วปิด)
 // กด Schedule ครั้งแรกของบัญชี TikTok ถาม "Allow your video to be saved for scheduled posting?" → ต้องกด Allow ช่องวันที่ถึงจะโผล่
+// 🧹 2026-11-03 พอร์ตจาก PD App — ปิด popup ที่เด้งบังหน้าโพสต์ (เตือนลิขสิทธิ์/tips หลังอัพคลิป) = ต้นเหตุ "ไม่พบช่อง Description"
+//   จำกัดเฉพาะ dialog จริง + ไม่แตะ dialog ของขั้นตอนเราเอง (ตะกร้า/ปฏิทิน)
+async function pdTtDismissPopups() {
+  const vis = (el) => !!(el && el.offsetParent !== null);
+  const WORDS = ['got it', 'ok', 'okay', 'understood', 'not now', 'maybe later', 'skip', 'close', 'continue', 'confirm', 'i understand', 'agree', 'รับทราบ', 'ตกลง', 'เข้าใจแล้ว', 'ไว้ภายหลัง', 'ไม่ใช่ตอนนี้', 'ข้าม', 'ปิด', 'ยืนยัน', 'ดำเนินการต่อ'];
+  let closed = 0;
+  for (let round = 0; round < 3; round++) {
+    let acted = false;
+    for (const dg of [...document.querySelectorAll('div[role="dialog"], [class*="TUXModal"], [class*="Modal__"]')].filter(vis)) {
+      const t = (dg.innerText || '').toLowerCase();
+      if (/add link|ตะกร้า|when to post|calendar|scheduled posting/.test(t) && !/copyright|ลิขสิทธิ์/.test(t)) continue;
+      const btns = [...dg.querySelectorAll('button, [role="button"]')].filter(vis);
+      const x = btns.find((b) => WORDS.includes((b.textContent || '').trim().toLowerCase()))
+        || btns.find((b) => /close|ปิด/i.test(b.getAttribute('aria-label') || ''))
+        || [...dg.querySelectorAll('[class*="close" i]')].find(vis);
+      if (x) { try { x.click(); } catch (_) {} closed++; acted = true; await delay(700); }
+    }
+    if (!acted) break;
+  }
+  if (closed) console.log('[TikTok] 🧹 ปิดหน้าต่างแจ้งเตือนที่บังหน้าโพสต์แล้ว ' + closed + ' อัน');
+  return closed;
+}
+
 async function pdTtAllowScheduleSave() {
   const vis = (el) => !!(el && el.offsetParent !== null);
   for (const dg of [...document.querySelectorAll('div[role="dialog"], [class*="TUXModal"], [class*="Modal__"], [class*="modal"]')].filter(vis)) {
@@ -3127,14 +3161,14 @@ async function handleContinueToPostDialog() {
   if (postNowBtn) {
     console.log('[TikTok] Clicking "Post now" button...');
 
-    // คลิกปุ่ม
+    // v0.8.9 (พอร์ตจาก VIP v4.7.17): กดครั้งเดียว — เดิม click() แล้ว dispatch click ซ้ำเสมอ = หน้าอืดแล้วโพสต์เบิ้ล 2 โพสต์/คลิป
     postNowBtn.focus();
     postNowBtn.click();
-
-    // ถ้า click ไม่ทำงาน ลอง dispatch events
-    postNowBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    postNowBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    postNowBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await delay(1500);
+    if (postNowBtn.isConnected && postNowBtn.offsetParent !== null && (document.body.innerText || '').includes('Continue to post?')) {
+      console.log('[TikTok] click() ไม่เข้า — fallback dispatch click อีกครั้งเดียว');
+      postNowBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
 
     await delay(1000);
     console.log('[TikTok] "Post now" clicked!');

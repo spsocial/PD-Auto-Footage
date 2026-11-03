@@ -18,7 +18,7 @@ let JavaScriptObfuscator;
 try { JavaScriptObfuscator = require('javascript-obfuscator'); }
 catch (e) { JavaScriptObfuscator = require(VIP_OBF); }
 
-const VERSION = '0.8.8';
+const VERSION = '0.8.9';
 const DIST_DIR = 'dist';
 
 // ── ไฟล์ JS ที่ต้อง obfuscate (SAFE profile ทุกไฟล์ — เหตุผลด้านบน) ──
