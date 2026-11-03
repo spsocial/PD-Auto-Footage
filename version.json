@@ -1,8 +1,14 @@
 {
-  "latest": "0.8.9",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.9/PD-Auto-Footage-v0.8.9-protected.zip",
-  "changelog": "🩹 โพสต์ TikTok ทนขึ้น: แก้กด Post now แล้วโพสต์เบิ้ล 2 โพสต์ · ปิด popup ลิขสิทธิ์/แจ้งเตือนที่บังช่องแคปชั่นให้เอง (แก้ \"ไม่พบช่อง Description\") · แฮชแท็กไทยตัวอักษรครบ · ตัด emoji ออกจากชื่อตะกร้า · Merge ตั้งแนวตั้ง/แนวนอนแล้วเช็คซ้ำ",
+  "latest": "0.8.10",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.10/PD-Auto-Footage-v0.8.10-protected.zip",
+  "changelog": "💬 ใหม่: ปุ่มแจ้งปัญหา / เสนอแนะ (มุมล่างซ้าย) — ส่งถึงทีมพัฒนาโดยตรง แนบรูปได้ บอทแนบ log ให้เอง · ทีมตอบกลับในหน้า \"เรื่องของฉัน\" (มีจุดแดงเตือน) · แก้แล้วกด ✅ หายแล้ว / ❌ ยังไม่หาย ได้",
   "versions": [
+    {
+      "version": "0.8.10",
+      "date": "2026-11-03",
+      "changelog": "💬 ใหม่: ปุ่มแจ้งปัญหา / เสนอแนะ (มุมล่างซ้าย) — ส่งถึงทีมพัฒนาโดยตรง แนบรูปได้ บอทแนบ log ให้เอง · ทีมตอบกลับในหน้า \"เรื่องของฉัน\" (มีจุดแดงเตือน) · แก้แล้วกด ✅ หายแล้ว / ❌ ยังไม่หาย ได้",
+      "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.10/PD-Auto-Footage-v0.8.10-protected.zip"
+    },
     {
       "version": "0.8.9",
       "date": "2026-11-03",
