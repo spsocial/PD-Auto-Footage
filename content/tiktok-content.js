@@ -1880,6 +1880,115 @@ function findButtonInModal(buttonText) {
 
 // Step 4: ตั้งค่า Schedule
 // v7.3: เพิ่ม scheduleTime parameter สำหรับตั้งเวลาเอง (HH:MM)
+// 🆕 2026-11-03 พอร์ตจาก PD App v1.8.21 — TikTok เปลี่ยนหน้าตั้งเวลาใหม่ตั้งแต่ ~26 ต.ค. 2026 (ลูกค้าแจ้ง "ตั้งเวลาโพสต์ TikTok ไม่ได้")
+//   ช่องวันที่ = div.Picker__trigger[role=combobox] โชว์ "Oct 26, 2026" (ไม่ใช่ input แล้ว) · ปฏิทิน = button.DatePicker__day[aria-label="Wednesday, October 28th, 2026"]
+//   ลูกศร = button.DatePicker__nav · เวลา = button.TimePicker__item[aria-label="Hours 14"/"Minutes 35"] · ช่องเวลาโชว์ "14:35"
+//   ⚠️ ปุ่มเปิดปฏิทิน/นาฬิกาเป็นแบบสลับ → คลิกครั้งเดียว (ห้ามคลิกซ้ำ = เปิดแล้วปิด)
+// กด Schedule ครั้งแรกของบัญชี TikTok ถาม "Allow your video to be saved for scheduled posting?" → ต้องกด Allow ช่องวันที่ถึงจะโผล่
+async function pdTtAllowScheduleSave() {
+  const vis = (el) => !!(el && el.offsetParent !== null);
+  for (const dg of [...document.querySelectorAll('div[role="dialog"], [class*="TUXModal"], [class*="Modal__"], [class*="modal"]')].filter(vis)) {
+    if (!/scheduled posting|saved for schedul|บันทึก.*ตั้งเวลา|ตั้งเวลา.*บันทึก/i.test(dg.innerText || '')) continue;
+    const ok = [...dg.querySelectorAll('button, [role="button"]')].filter(vis).find((b) => /^(allow|อนุญาต)$/i.test((b.textContent || '').trim()));
+    if (ok) { try { ok.click(); } catch (_) {} await delay(1200); return true; }
+  }
+  return false;
+}
+function pdTtNewSchedulePresent() {
+  const vis = (el) => !!(el && el.offsetParent !== null);
+  const all = [...document.querySelectorAll('.Picker__trigger, [role="combobox"][aria-haspopup="true"]')].filter(vis);
+  return all.some((e) => /\d{4}/.test((e.textContent || '').trim()) || /date|วันที่/i.test(e.getAttribute('aria-label') || ''));
+}
+async function pdTtSetScheduleNewUI(date, time) {
+  const vis = (el) => !!(el && el.offsetParent !== null);
+  const txt = (el) => ((el && el.textContent) || '').trim();
+  const clickOnce = (el) => { if (!el) return false; try { el.scrollIntoView({ block: 'center' }); } catch (_) {} try { el.click(); return true; } catch (_) { return false; } };
+  const rep = (t) => { try { console.log('[TikTok] ' + t); updateTikTokOverlay(t, ''); } catch (_) {} };
+  const p2 = (x) => String(x).padStart(2, '0');
+  const trig = (kind) => {
+    const all = [...document.querySelectorAll('.Picker__trigger, [role="combobox"][aria-haspopup="true"]')].filter(vis);
+    return kind === 'time' ? all.find((e) => /^\d{1,2}:\d{2}$/.test(txt(e)))
+      : all.find((e) => /date|วันที่/i.test(e.getAttribute('aria-label') || '')) || all.find((e) => /\d{4}/.test(txt(e)));
+  };
+  const EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const TH = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const ymdOf = (b) => {
+    const s = String((b && b.getAttribute('aria-label')) || '');
+    let m = EN.findIndex((n) => s.includes(n)); if (m < 0) m = TH.findIndex((n) => s.includes(n));
+    let y = parseInt((s.match(/(\d{4})/) || [])[1], 10); if (y > 2400) y -= 543;
+    const d = parseInt((s.replace(/\d{4}/, '').match(/(\d{1,2})/) || [])[1], 10);
+    return (m < 0 || !y || !d) ? '' : `${y}-${p2(m + 1)}-${p2(d)}`;
+  };
+  const dayBtns = () => [...document.querySelectorAll('button.DatePicker__day')];
+  const dateOpen = () => !!document.querySelector('.DatePicker__panel');
+  const timeOpen = () => !!document.querySelector('.TimePicker__panel');
+  const readDate = async () => {
+    const t = trig('date'); if (!t) return '';
+    if (!dateOpen()) { clickOnce(t); await delay(700); }
+    const sel = dayBtns().find((b) => b.getAttribute('aria-selected') === 'true');
+    const v = ymdOf(sel);
+    if (dateOpen()) { clickOnce(t); await delay(400); }
+    return v;
+  };
+  if (date) {
+    let got = await readDate();
+    for (let attempt = 0; attempt < 3 && got !== date; attempt++) {
+      const t = trig('date'); if (!t) break;
+      if (!dateOpen()) { clickOnce(t); await delay(700); }
+      let btn = null;
+      for (let step = 0; step < 13; step++) {
+        btn = dayBtns().find((b) => ymdOf(b) === date);
+        if (btn) break;
+        const mid = dayBtns()[15]; const cur = ymdOf(mid); if (!cur) break;
+        const delta = (parseInt(date.slice(0, 4), 10) - parseInt(cur.slice(0, 4), 10)) * 12 + (parseInt(date.slice(5, 7), 10) - parseInt(cur.slice(5, 7), 10));
+        if (!delta) break;
+        const navs = document.querySelectorAll('button.DatePicker__nav'); if (navs.length < 2) break;
+        clickOnce(navs[delta > 0 ? navs.length - 1 : 0]); await delay(400);
+      }
+      if (!btn) { if (dateOpen()) clickOnce(t); throw new Error(`หาวันที่ ${date} ในปฏิทิน TikTok ไม่เจอ`); }
+      if (btn.getAttribute('aria-disabled') === 'true' || btn.disabled) { if (dateOpen()) clickOnce(t); throw new Error(`TikTok ไม่ให้เลือกวันที่ ${date} — ตั้งล่วงหน้าได้ไม่เกิน ~10 วัน และต้องไม่ใช่วันที่ผ่านมาแล้ว`); }
+      clickOnce(btn); await delay(700);
+      got = await readDate();
+    }
+    if (got !== date) throw new Error(`ตั้งวันที่ไม่ติด — เป้า ${date} แต่ปฏิทินได้ ${got || '(อ่านไม่ได้)'}`);
+    rep(`🗓️ ยืนยันวันที่ใน TikTok แล้ว: ${got}`);
+  }
+  if (time) {
+    if (!trig('time')) throw new Error('ไม่พบช่องเวลาในหน้า TikTok (หน้าตั้งเวลาแบบใหม่)');
+    const [hh, mm] = time.split(':');
+    let th = parseInt(hh, 10), tm = Math.round(parseInt(mm, 10) / 5) * 5;
+    if (tm >= 60) { tm = 0; th += 1; if (th >= 24) { th = 23; tm = 55; } }
+    const tooSoonMsg = () => /at least 15 minutes|อย่างน้อย 15 นาที/i.test(document.body.innerText || '');
+    const setT = async (h, m) => {
+      const t = trig('time'); if (!t) return 'ไม่พบช่องเวลา';
+      if (!timeOpen()) { clickOnce(t); await delay(700); }
+      const cols = document.querySelectorAll('.TimePicker__column');
+      let why = '';
+      for (const [i, lab, want] of [[0, 'Hours', p2(h)], [1, 'Minutes', p2(m)]]) {
+        const el = document.querySelector(`button.TimePicker__item[aria-label="${lab} ${want}"]`)
+          || (cols[i] ? [...cols[i].querySelectorAll('button.TimePicker__item')].find((b) => txt(b) === want) : null);
+        if (!el) { why = 'ไม่เจอตัวเลือก' + (i ? 'นาที' : 'ชั่วโมง') + ' ' + want; continue; }
+        if (el.getAttribute('aria-disabled') === 'true' || el.disabled) why = (i ? 'นาที' : 'ชั่วโมง') + ' ' + want + ' ถูก TikTok ปิดไว้ (เวลาผ่านมาแล้ว)';
+        try { el.scrollIntoView({ block: 'center' }); } catch (_) {}
+        await delay(180);
+        clickOnce(el); await delay(450);
+      }
+      if (timeOpen()) { const t2 = trig('time'); if (t2) clickOnce(t2); await delay(400); }
+      return why;
+    };
+    const target = `${p2(th)}:${p2(tm)}`; let whyFail = '';
+    for (let attempt = 0; attempt < 3 && txt(trig('time')) !== target; attempt++) whyFail = (await setT(th, tm)) || whyFail;
+    if (txt(trig('time')) !== target) throw new Error('ตั้งเวลาไม่ติด — เป้า ' + target + ' แต่ได้ ' + txt(trig('time')) + (whyFail ? ' · ' + whyFail : ''));
+    if (tooSoonMsg()) {
+      let bh = th, bm = tm;
+      for (let bump = 0; bump < 8 && tooSoonMsg(); bump++) { bm += 5; if (bm >= 60) { bm -= 60; bh += 1; } if (bh >= 24) break; await setT(bh, bm); await delay(300); }
+      if (tooSoonMsg()) throw new Error('เวลาที่ตั้งใกล้เกินไป — TikTok ต้องตั้งล่วงหน้าอย่างน้อย 15 นาที');
+    }
+    rep(`⏰ ยืนยันเวลาใน TikTok แล้ว: ${txt(trig('time'))}`);
+  }
+  return true;
+}
+
 async function setSchedule(minutesFromNow = 20, scheduleDate = '', scheduleTime = '') {
   console.log('[TikTok] Step 4: Set schedule');
   console.log('[TikTok] scheduleDate:', scheduleDate);
@@ -1951,6 +2060,22 @@ async function setSchedule(minutesFromNow = 20, scheduleDate = '', scheduleTime 
       }
     }
     await delay(1000);
+  }
+
+  // 🆕 2026-11-03: หน้าตั้งเวลาแบบใหม่ของ TikTok (Picker__trigger) — ทางเก่าหา input เวลาไม่เจอแล้ว (ลูกค้าแจ้ง "ตั้งเวลาโพสต์ไม่ได้")
+  for (let w = 0; w < 8 && !pdTtNewSchedulePresent() && !document.querySelector('input.TUXTextInputCore-input[readonly]'); w++) { await pdTtAllowScheduleSave(); await delay(800); }
+  if (pdTtNewSchedulePresent()) {
+    let d = scheduleDate, t = scheduleTime;
+    if (!d || !t) {
+      const tgt = new Date(Date.now() + Math.max(20, +minutesFromNow || 20) * 60000);
+      const p2 = (x) => String(x).padStart(2, '0');
+      if (!d) d = `${tgt.getFullYear()}-${p2(tgt.getMonth() + 1)}-${p2(tgt.getDate())}`;
+      if (!t) { let mm = Math.ceil(tgt.getMinutes() / 5) * 5, hh = tgt.getHours(); if (mm >= 60) { mm = 0; hh = (hh + 1) % 24; } t = `${p2(hh)}:${p2(mm)}`; }
+    }
+    console.log('[TikTok] 🆕 New schedule UI →', d, t);
+    await pdTtSetScheduleNewUI(d, t);
+    await delay(500);
+    return true;
   }
 
   // === v7.3.4: สลับลำดับ - ตั้งวันที่ก่อน แล้วค่อยตั้งเวลา ===

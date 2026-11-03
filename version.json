@@ -1,8 +1,14 @@
 {
-  "latest": "0.8.7",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.7/PD-Auto-Footage-v0.8.7-protected.zip",
-  "changelog": "🍌 แก้เจนภาพด้วย Nano Banana 2 ไม่ได้ — Flow ถอดรุ่น Nano Banana 2 ออกแล้ว เปลี่ยนเป็น Nano Banana 2.1 · เลือก Nano Banana 2 = เจนด้วย 2.1 ให้อัตโนมัติ (Express + Merge) · Imagen 4 ถูกถอดจาก Flow เช่นกัน → ใช้ 2.1 แทน · 🩹 Express คลิปเจนเสร็จแต่ขึ้น getMedia: ไม่พบ → บอทลองดึงซ้ำ + ทางสำรองก่อนยอมแพ้ · 💡 อัปเดตแล้วปิดแท็บ Flow ที่ค้างอยู่ก่อนสั่งงานใหม่",
+  "latest": "0.8.8",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.8/PD-Auto-Footage-v0.8.8-protected.zip",
+  "changelog": "🗓️ แก้ตั้งเวลาโพสต์ TikTok ไม่ได้ — รองรับหน้าตั้งเวลาแบบใหม่ของ TikTok + กดยอมรับหน้าต่าง Allow ให้อัตโนมัติ · 💡 อัปเดตแล้วรีเฟรชแท็บ TikTok ที่ค้างอยู่ก่อนสั่งโพสต์",
   "versions": [
+    {
+      "version": "0.8.8",
+      "date": "2026-11-03",
+      "changelog": "🗓️ แก้ตั้งเวลาโพสต์ TikTok ไม่ได้ — รองรับหน้าตั้งเวลาแบบใหม่ของ TikTok + กดยอมรับหน้าต่าง Allow ให้อัตโนมัติ · 💡 อัปเดตแล้วรีเฟรชแท็บ TikTok ที่ค้างอยู่ก่อนสั่งโพสต์",
+      "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.8/PD-Auto-Footage-v0.8.8-protected.zip"
+    },
     {
       "version": "0.8.7",
       "date": "2026-10-07",
