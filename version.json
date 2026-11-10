@@ -1,8 +1,14 @@
 {
-  "latest": "0.8.10",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.10/PD-Auto-Footage-v0.8.10-protected.zip",
-  "changelog": "💬 ใหม่: ปุ่มแจ้งปัญหา / เสนอแนะ (มุมล่างซ้าย) — ส่งถึงทีมพัฒนาโดยตรง แนบรูปได้ บอทแนบ log ให้เอง · ทีมตอบกลับในหน้า \"เรื่องของฉัน\" (มีจุดแดงเตือน) · แก้แล้วกด ✅ หายแล้ว / ❌ ยังไม่หาย ได้",
+  "latest": "0.8.11",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.11/PD-Auto-Footage-v0.8.11-protected.zip",
+  "changelog": "🆕 Omni 1.2 Flash (โมเดลใหม่ของ Flow) — เลือกที่ \"โมเดลวีดีโอ\" แล้วตั้งจำนวนวินาทีได้ 4/6/8/10/15 วิ (~3 เครดิต/วิ) · Merge เลือกรุ่น 1.2 กับเลื่อนหลอดความยาวให้เอง · ⚠️ Flow จะถอด Omni 1.1 / Veo Fast / Veo Quality วันที่ 5 ธ.ค. — แนะนำเปลี่ยนมาใช้ Omni 1.2 หรือ Veo Lite",
   "versions": [
+    {
+      "version": "0.8.11",
+      "date": "2026-11-10",
+      "changelog": "🆕 Omni 1.2 Flash (โมเดลใหม่ของ Flow) — เลือกที่ \"โมเดลวีดีโอ\" แล้วตั้งจำนวนวินาทีได้ 4/6/8/10/15 วิ (~3 เครดิต/วิ) · Merge เลือกรุ่น 1.2 กับเลื่อนหลอดความยาวให้เอง · ⚠️ Flow จะถอด Omni 1.1 / Veo Fast / Veo Quality วันที่ 5 ธ.ค. — แนะนำเปลี่ยนมาใช้ Omni 1.2 หรือ Veo Lite",
+      "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.11/PD-Auto-Footage-v0.8.11-protected.zip"
+    },
     {
       "version": "0.8.10",
       "date": "2026-11-03",
@@ -146,5 +152,5 @@
       "note": "เปิดตัว: Merge Mode, ซับ 13 ฟอนต์, การ์ดสรุป, license lock"
     }
   ],
-  "releaseDate": "2026-11-03"
+  "releaseDate": "2026-11-10"
 }
