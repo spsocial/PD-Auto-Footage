@@ -1,8 +1,14 @@
 {
-  "latest": "0.8.12",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.12/PD-Auto-Footage-v0.8.12-protected.zip",
-  "changelog": "🎬 ข้ามสร้างภาพ (เหมือน PD App) — เปิดสวิตช์ในหน้าสร้างโฆษณา ฉากที่โชว์สินค้าจะใช้รูปสินค้าที่ใส่ไว้ทำวิดีโอเลย ไม่เจนภาพใหม่ (สินค้าตรงรูปเป๊ะ · เร็วขึ้น) · ฉากที่ไม่มีสินค้ายังสร้างภาพตามบท · ใช้กับโหมด Express",
+  "latest": "0.8.13",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.13/PD-Auto-Footage-v0.8.13-protected.zip",
+  "changelog": "🥕 ข้ามสร้างภาพ + ตัวละคร (เท่า PD App) — เปิดสวิตช์ 🎬 ข้ามสร้างภาพ แล้วใส่ตัวละครหลักด้วย ฉากที่โชว์สินค้าจะแนบรูปสินค้า+ตัวละครให้ Flow สร้างวิดีโอแบบ Ingredients (คนในคลิปเป็นตัวละครที่ใส่ · สินค้าตรงรูป) · ไม่มีตัวละคร = ใช้รูปสินค้าเป็นภาพแรกเหมือนเดิม · ใช้กับโหมด Express",
   "versions": [
+    {
+      "version": "0.8.13",
+      "date": "2026-11-11",
+      "changelog": "🥕 ข้ามสร้างภาพ + ตัวละคร (เท่า PD App) — เปิดสวิตช์ 🎬 ข้ามสร้างภาพ แล้วใส่ตัวละครหลักด้วย ฉากที่โชว์สินค้าจะแนบรูปสินค้า+ตัวละครให้ Flow สร้างวิดีโอแบบ Ingredients (คนในคลิปเป็นตัวละครที่ใส่ · สินค้าตรงรูป) · ไม่มีตัวละคร = ใช้รูปสินค้าเป็นภาพแรกเหมือนเดิม · ใช้กับโหมด Express",
+      "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.13/PD-Auto-Footage-v0.8.13-protected.zip"
+    },
     {
       "version": "0.8.12",
       "date": "2026-11-11",
