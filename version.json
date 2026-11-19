@@ -1,8 +1,14 @@
 {
-  "latest": "0.8.13",
-  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.13/PD-Auto-Footage-v0.8.13-protected.zip",
-  "changelog": "🥕 ข้ามสร้างภาพ + ตัวละคร (เท่า PD App) — เปิดสวิตช์ 🎬 ข้ามสร้างภาพ แล้วใส่ตัวละครหลักด้วย ฉากที่โชว์สินค้าจะแนบรูปสินค้า+ตัวละครให้ Flow สร้างวิดีโอแบบ Ingredients (คนในคลิปเป็นตัวละครที่ใส่ · สินค้าตรงรูป) · ไม่มีตัวละคร = ใช้รูปสินค้าเป็นภาพแรกเหมือนเดิม · ใช้กับโหมด Express",
+  "latest": "0.8.14",
+  "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.14/PD-Auto-Footage-v0.8.14-protected.zip",
+  "changelog": "🎬 ข้ามสร้างภาพใช้ได้ในโหมด Merge แล้ว (เท่า PD App) — เปิดสวิตช์ 🎬 ข้ามสร้างภาพ แล้วเลือก Merge ฉากที่โชว์สินค้าจะใช้รูปสินค้าเป็นภาพแรก ไม่เจนภาพใหม่ (ประหยัดเครดิต + เร็วขึ้น) · ฉากที่ไม่โชว์สินค้าสร้างภาพตามเดิม · ช่วงข้ามสร้างภาพสั่ง Flow ตรงแบบ PD App · ได้คลิป 720p",
   "versions": [
+    {
+      "version": "0.8.14",
+      "date": "2026-11-19",
+      "changelog": "🎬 ข้ามสร้างภาพใช้ได้ในโหมด Merge แล้ว (เท่า PD App) — เปิดสวิตช์ 🎬 ข้ามสร้างภาพ แล้วเลือก Merge ฉากที่โชว์สินค้าจะใช้รูปสินค้าเป็นภาพแรก ไม่เจนภาพใหม่ (ประหยัดเครดิต + เร็วขึ้น) · ฉากที่ไม่โชว์สินค้าสร้างภาพตามเดิม · ช่วงข้ามสร้างภาพสั่ง Flow ตรงแบบ PD App · ได้คลิป 720p",
+      "downloadUrl": "https://github.com/spsocial/PD-Auto-Footage/releases/download/v0.8.14/PD-Auto-Footage-v0.8.14-protected.zip"
+    },
     {
       "version": "0.8.13",
       "date": "2026-11-11",
@@ -164,5 +170,5 @@
       "note": "เปิดตัว: Merge Mode, ซับ 13 ฟอนต์, การ์ดสรุป, license lock"
     }
   ],
-  "releaseDate": "2026-11-11"
+  "releaseDate": "2026-11-19"
 }
